@@ -1,0 +1,36 @@
+
+plugins {
+    id "com.github.node-gradle.node" version "7.0.2"
+    id "maven-publish"
+}
+
+apply plugin: 'base'
+
+group = 'no.auke.m2.proxy.express'
+version = "0.1"
+
+description = "test node server"
+
+node {
+
+    download = true
+    version = "18.18.1"
+    npmVersion = ""
+    yarnVersion = ""
+    distBaseUrl = "https://nodejs.org/dist"
+    allowInsecureProtocol = null
+    npmInstallCommand = "install"
+    npmCommand = "build"
+    // The directory where Node.js is unpacked (when download is true)
+    workDir = file("${project.projectDir}/.gradle/nodejs")
+    // The directory where npm is installed (when a specific version is defined)
+    npmWorkDir = file("${project.projectDir}/.gradle/npm")
+    // The directory where yarn is installed (when a Yarn task is used)
+    yarnWorkDir = file("${project.projectDir}/.gradle/yarn")
+    // The Node.js project directory location
+    // This is where the package.json file and node_modules directory are located
+    // By default it is at the root of the current project
+    nodeProjectDir = file("${project.projectDir}")
+
+    nodeProxySettings = ProxySettings.SMART
+}

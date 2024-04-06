@@ -1,3 +1,4 @@
 rootProject.name = 'm2-httpproxy'
 include 'proxy'
+include 'node-server'
 

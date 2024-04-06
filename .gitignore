@@ -40,3 +40,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+/node-server/package-lock.json
+/node-server/dist/
+/node-server/node_modules/
