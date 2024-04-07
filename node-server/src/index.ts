@@ -6,17 +6,31 @@ import express, {Express} from 'express';
 const router: Express = express();
 const httpServer = http.createServer(router);
 
-router.get('/', (req, res) => {
-    res.send('Hello, TypeScript with Express!');
-    console.info("got from " + req.url);
+httpServer.keepAliveTimeout = 30000;
+httpServer.maxConnections = 10;
+httpServer.timeout = 30000;
+
+router.get('/test', (req, res) => {
+    console.info("url " + req.url +" " + Date.now().toString());
+    res.shouldKeepAlive=true
+    res.status(200).send('<p>Hello'+req.url+" " + Date.now().toString() + "</p>");
+});
+
+router.get('/json', (req, res) => {
+    res.status(200).send(
+        {hello: "leif",
+        url: req.url,
+        host: req.hostname,
+        baseurl: req.baseUrl,
+        agent: req.header('user-agent')
+        }
+    );
 });
 
 router.use((req: express.Request, res: express.Response) => {
-    console.info("Metrics collect error, url " + req.url);
-    const error = new Error('not found: ' + req.url);
-    return res.status(404).json({
-        message: error.message
-    });
+    console.info("url " + req.url +" " + Date.now().toString());
+    res.shouldKeepAlive=true
+    res.send('Hello'+req.url+" " + Date.now().toString());
 });
 
 router.listen(3000, () => {
