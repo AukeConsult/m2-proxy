@@ -27,6 +27,9 @@ dependencies {
 
 }
 
+test {
+    useJUnitPlatform()
+}
 
 application {
     mainClass.set("no.auke.m2.proxy.Application")
