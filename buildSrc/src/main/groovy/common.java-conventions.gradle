@@ -1,0 +1,31 @@
+plugins {
+    id 'common.repository-definition'
+    id 'java-library'
+}
+
+version = appVersion + appVersionExtension
+
+dependencies {
+
+    runtimeOnly "org.yaml:snakeyaml"
+
+    implementation 'org.slf4j:slf4j-api:1.7.32'
+
+    testImplementation 'org.mockito:mockito-all:2.0.2-beta'
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.1"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.1"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.1"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.3"
+
+}
+
+tasks.withType(Test).configureEach {
+    minHeapSize = "1024m" // initial heap size
+    maxHeapSize = "4096m" // maximum heap size
+    useJUnitPlatform()
+}
+
+test {
+    useJUnitPlatform()
+}
+
