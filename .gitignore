@@ -17,3 +17,4 @@ out/
 /node-server/dist/
 /logs
 **/logs/
+/.idea/
