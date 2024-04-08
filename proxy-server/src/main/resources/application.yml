@@ -12,3 +12,13 @@ endpoints:
     path: self
     enabled: true
     sensitive: false
+
+proxy-server:
+  main-host: localhost
+  server-instances:
+    - server-id: "test1"
+      port: 4000
+    - server-id: "test2"
+      port: 4001
+    - server-id: "test3"
+      port: 4003

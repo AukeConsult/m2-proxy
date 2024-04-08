@@ -78,6 +78,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
         if(!stopped.getAndSet(true)) {
             log.debug("Stopping");
             while(running.get()) {
+                forceClose();
                 synchronized (waitObject) {
                     waitObject.notify();
                 }
@@ -96,5 +97,6 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
     protected abstract void startServices();
     protected abstract void execute();
     protected abstract void close();
+    protected abstract void forceClose();
 
 }
