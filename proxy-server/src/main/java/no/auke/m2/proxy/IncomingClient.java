@@ -1,11 +1,9 @@
 package no.auke.m2.proxy;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 
 public class IncomingClient {
     Socket client;

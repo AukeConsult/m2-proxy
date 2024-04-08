@@ -1,0 +1,40 @@
+<configuration>
+
+    <property name="logDirectory" value="./logs"/>
+    <property name="logFile" value="proxy-server"/>
+    <property name="pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %level %logger - %msg%n"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logDirectory}/${logFile}.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logDirectory}/${logFile}.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <withJansi>false</withJansi>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+
+<!--    &lt;!&ndash;    Remove logback logging&ndash;&gt;-->
+<!--    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />-->
+<!--    &lt;!&ndash;    Remove micronaut logging&ndash;&gt;-->
+<!--    <logger name="io.micronaut.runtime.Micronaut" level="ERROR" additivity="false"/>-->
+<!--    &lt;!&ndash;    Remove netty logging&ndash;&gt;-->
+<!--    <logger name="io.netty" level="ERROR" additivity="false" />-->
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>

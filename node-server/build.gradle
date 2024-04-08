@@ -6,9 +6,6 @@ plugins {
 
 apply plugin: 'base'
 
-group = 'no.auke.m2.proxy.express'
-version = "0.1"
-
 description = "test node server"
 
 node {

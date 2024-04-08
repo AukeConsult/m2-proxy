@@ -1,16 +1,23 @@
 package no.auke.m2.proxy;
 
-import java.io.*;
-import java.net.*;
+import jakarta.inject.Singleton;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.concurrent.*;
 
-public class Main {
-
+@Singleton
+public class MainService {
 
     BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
     ExecutorService executor = new ThreadPoolExecutor(10,20,2,TimeUnit.SECONDS,tasks);
 
-    public void runServer() {
+    public void start() {
 
         try (ServerSocket serverSocket = new ServerSocket(3001)) {
 
@@ -37,8 +44,7 @@ public class Main {
 
                                 long start_request = System.currentTimeMillis();
 
-                                BufferedReader in = new BufferedReader(
-                                        new InputStreamReader(client.getInputStream()));
+                                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                                 String line;
                                 StringBuilder client_request = new StringBuilder();
                                 while (in.ready() && (line = in.readLine()) != null) {
@@ -144,7 +150,8 @@ public class Main {
 
     }
 
-    public static void main(String[] args) {
-        new Main().runServer();
+    public void stop() {
+
     }
+
 }

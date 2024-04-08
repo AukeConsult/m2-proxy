@@ -1,0 +1,14 @@
+micronaut:
+  application:
+    name: proxy-server
+  server:
+    port: 8081
+    cors:
+      enabled: true
+
+---
+endpoints:
+  all:
+    path: self
+    enabled: true
+    sensitive: false

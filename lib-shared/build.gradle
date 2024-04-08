@@ -1,0 +1,27 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+
+    implementation group: 'commons-io', name: 'commons-io', version: '1.4'
+    implementation 'org.apache.commons:commons-compress:1.26.1'
+    implementation 'org.apache.commons:commons-lang3:3.14.0'
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    implementation ('org.slf4j:slf4j-api:1.7.32')
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+
+    testRuntimeOnly("ch.qos.logback:logback-classic:1.2.3")
+
+}
