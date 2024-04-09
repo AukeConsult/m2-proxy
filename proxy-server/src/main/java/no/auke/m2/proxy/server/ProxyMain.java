@@ -1,8 +1,7 @@
-package no.auke.m2.proxy;
+package no.auke.m2.proxy.server;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.inject.Singleton;
-import no.auke.m2.proxy.executors.ServiceBase;
 import no.auke.m2.proxy.executors.ServiceBaseExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,8 @@ public class ProxyMain extends ServiceBaseExecutor {
 
     public String mainHost;
     public List<Map<String,Object>> serverInstances = new ArrayList<>();
-    private List<ProxyServer> proxyRunning = new ArrayList<>();
+
+    private final List<ProxyServer> servicesRunning = new ArrayList<>();
 
     @Override
     protected boolean open() {
@@ -27,7 +27,7 @@ public class ProxyMain extends ServiceBaseExecutor {
 
     @Override
     protected void startServices() {
-        log.info("Start instances");
+        log.debug("{} -> Start instances",mainHost);
         serverInstances.forEach(s -> {
             ProxyServer service = new ProxyServer(
                     (String) s.get("server-id"),
@@ -35,7 +35,7 @@ public class ProxyMain extends ServiceBaseExecutor {
                     (Integer) s.get("port")
             );
             service.start();
-            proxyRunning.add(service);
+            servicesRunning.add(service);
         });
     }
 
@@ -43,9 +43,20 @@ public class ProxyMain extends ServiceBaseExecutor {
     protected void execute() {
         long waitTime = 1000*30L;
         while(isRunning()) {
-            proxyRunning.forEach(p -> {
-                log.info("{} -> Running: {}, requests: {}",p.getServerId(), p.isRunning(), p.getRequests());
+
+            servicesRunning.forEach(p -> {
+
+                p.cleanSessions();
+                log.info("{} -> Running: {}, requests: {}, waiting: {}, Active sessions: {}",
+                        p.getServerId(),
+                        p.isRunning(),
+                        p.getRequests(),
+                        p.getWaitingTasks(),
+                        p.getActiveSessions()
+                );
+
             });
+
             waitfor(waitTime);
         }
     }
@@ -53,6 +64,6 @@ public class ProxyMain extends ServiceBaseExecutor {
     protected void forceClose() {}
     @Override
     protected void close() {
-        proxyRunning.forEach(s -> s.stop());
+        servicesRunning.forEach(ServiceBaseExecutor::stop);
     }
 }
