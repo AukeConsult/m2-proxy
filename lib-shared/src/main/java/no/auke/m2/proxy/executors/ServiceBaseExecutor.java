@@ -56,6 +56,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
                         } catch (Exception e) {
                             log.error("Error execute: {}",e.getMessage());
                             stopped.set(true);
+                            e.printStackTrace();
                         }
                         running.set(false);
                     });

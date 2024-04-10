@@ -26,27 +26,21 @@ access-setup:
         - localhost
         - 0.0.0.0.0.0.1
       keep-alive: 120
-      header-keys:
+      headers:
         - key: "test"
           value: "123456"
         - key: "test2"
           value: "333333 hei på deg"
-    - token-path: "999"
-      endpoint-path: test
+    - token-path: "123"
+      endpoint-path: test2
       access-token: ""
-      ip-addresses:
-        - localhost
-        - 0.0.0.0.0.0.1
-      keep-alive: 120
-      header-keys:
-        - key: "test"
-          value: "123456"
-        - key: "test2"
-          value: "333333 hei på deg"
+      ip-addresses: []
+      headers: []
 
 proxy-server:
   main-host: localhost
   server-instances:
+
     - server-id: "test1"
       server-type: HTTP
       boot-address:
@@ -55,6 +49,7 @@ proxy-server:
       core-poolsize: 5
       maximum-poolsize: 20
       keep-alivetime: 5
+
       endpoints:
         - path: "/test"
           transport: TCP
@@ -72,6 +67,7 @@ proxy-server:
           transport: TCP
           host: localhost
           port: 3002
+
     - server-id: "test2"
       server-type: FTP
       port: 4001

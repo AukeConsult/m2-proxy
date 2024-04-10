@@ -4,18 +4,21 @@ import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import no.auke.m2.proxy.executors.ServiceBaseExecutor;
+import no.auke.m2.proxy.server.access.AccessController;
 import no.auke.m2.proxy.server.base.EndpointPath;
 import no.auke.m2.proxy.server.base.ProxyServer;
 import no.auke.m2.proxy.server.ftp.ProxyServerFtp;
+import no.auke.m2.proxy.server.http.ProxyServerHttp;
 import no.auke.m2.proxy.server.sftp.ProxyServerSftp;
-import no.auke.m2.proxy.server.access.AccessController;
 import no.auke.m2.proxy.types.TransportProtocol;
 import no.auke.m2.proxy.types.TypeServer;
-import no.auke.m2.proxy.server.http.ProxyServerHttp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Singleton
 @ConfigurationProperties("proxy-server")
@@ -28,6 +31,9 @@ public class ProxyMain extends ServiceBaseExecutor {
 
     @Inject
     private AccessController accessController;
+    public AccessController getAccesController() {
+        return accessController;
+    }
 
     @Override
     protected boolean open() {
@@ -42,7 +48,7 @@ public class ProxyMain extends ServiceBaseExecutor {
 
             Map<String, EndpointPath> endPoints = new HashMap<>();
 
-            List<Map<String,Object>> eplist = (List<Map<String,Object>>)s.getOrDefault("endpoints",new ArrayList<>());
+            List<Map<String,Object>> eplist = (List<Map<String,Object>>)s.getOrDefault("endpoints",new HashMap<>());
             eplist.forEach(e -> {
                 String path = (String)e.getOrDefault("path","");
                 TransportProtocol transport = TransportProtocol.valueOf((String)e.getOrDefault("transport","TCP"));

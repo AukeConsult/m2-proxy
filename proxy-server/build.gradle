@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':proxy-server-2')
+    implementation project(':proxy-core')
     implementation project(":lib-shared")
 }
 

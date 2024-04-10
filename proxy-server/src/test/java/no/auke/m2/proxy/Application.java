@@ -44,12 +44,8 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
 
         log.info("{} -> Start server: http://localhost:{}",name,port);
 
-        try {
-            accessController.start();
-            proxyMain.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        accessController.start();
+        proxyMain.start();
 
         getRuntime().addShutdownHook(new Thread(() -> {
             proxyMain.stop();

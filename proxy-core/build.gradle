@@ -1,0 +1,9 @@
+plugins {
+    id("common.micronaut-dependencies")
+    id("io.micronaut.library") version "$micronautVersion"
+    id("io.micronaut.aot") version "$micronautVersion"
+}
+
+dependencies {
+    implementation project(":lib-shared")
+}

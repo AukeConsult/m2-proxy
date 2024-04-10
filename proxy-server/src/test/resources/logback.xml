@@ -28,7 +28,7 @@
     <!--    Remove logback logging-->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
     <!--    Remove micronaut logging-->
-    <logger name="io.micronaut.runtime.Micronaut" level="DEBUG" additivity="false"/>
+    <logger name="io.micronaut.runtime.Micronaut" level="ERROR" additivity="false"/>
     <!--    Remove netty logging-->
     <logger name="io.netty" level="ERROR" additivity="false" />
 
