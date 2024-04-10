@@ -20,32 +20,33 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(ProxyServer.class);
 
+    public static long MAX_ID=99999999999L;
+
     private final Random rnd = new Random();
     private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
     public int getWaitingTasks() {
         return tasks.size();
     }
-
     private final ExecutorService executor;
     public ExecutorService getRequestExecutor() {
         return executor;
     }
 
-    private final ProxyMain mainService;
+
     private final String serverId;
     private final String bootAddress;
     private final int port;
     private final int inActiveTimeSeconds;
     private final TypeServer typeServer;
+    private final Map<String, EndpointPath> endPoints;
 
+    AccessController accessController;
     public AccessController getAccesController() {
-        return mainService.getAccesController();
+        return accessController;
     }
 
     public String getServerId() {return serverId;}
     private String hostAddress;
-    public String getHostAddress() {return hostAddress;}
-    public int getPort() {return port;}
 
     public int getActiveSessions() {
         return clientSessions.size();
@@ -53,6 +54,11 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
     public List<Session> getClientSessions() {
         return new ArrayList<>(clientSessions.values());
     }
+
+    public Map<String,EndpointPath> getEndPoints() {
+        return endPoints;
+    }
+
     protected final Map<Long, Session> clientSessions = new ConcurrentHashMap<>();
 
     private ServerSocket serverSocketClose =null;
@@ -64,7 +70,7 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
     public void cleanSessions() {
         // clean sessions no longer active
         getClientSessions().forEach(s -> {
-            if(System.currentTimeMillis() - s.getLastActive()>(inActiveTimeSeconds*1000)) {
+            if(System.currentTimeMillis() - s.getLastActive()>(inActiveTimeSeconds*1000L)) {
                 clientSessions.remove(s.getAccess().getAccessId());
             }
         });
@@ -80,7 +86,7 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
     protected abstract void executeRequest(ProxyServer proxyServer, Socket clientSocket, long requestId);
     public abstract Object readInput(BufferedReader inputStream) throws IOException;
 
-    public ProxyServer(ProxyMain mainService,
+    public ProxyServer(AccessController accessController,
                        String serverId,
                        String bootAddress,
                        int port,
@@ -88,13 +94,15 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
                        int corePooSize,
                        int maximumPoolSize,
                        int keepAliveTime,
+                       Map<String, EndpointPath> endPoints,
                        TypeServer typeServer
     ) {
-        this.mainService=mainService;
+        this.accessController=accessController;
         this.serverId =serverId;
         this.bootAddress=bootAddress;
         this.port=port;
         this.inActiveTimeSeconds=inActiveTimeSeconds;
+        this.endPoints=endPoints;
         this.typeServer=typeServer;
 
         executor = new ThreadPoolExecutor(corePooSize,maximumPoolSize,keepAliveTime,TimeUnit.SECONDS,tasks);
@@ -127,7 +135,7 @@ public abstract class ProxyServer extends ServiceBaseExecutor {
                         requests.incrementAndGet();
                         if(isRunning()) {
 
-                            long requestId = rnd.nextLong(ProxyMain.MAX_ID);
+                            long requestId = rnd.nextLong(ProxyServer.MAX_ID);
                             log.info("{} -> RequestId: {}, from IP:PORT {}:{}",
                                     serverId,
                                     requestId,

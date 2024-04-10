@@ -1,4 +1,4 @@
-package no.auke.m2.proxy.server.base;
+package no.auke.m2.proxy.base;
 
 public class AccessControllerTest {
 }

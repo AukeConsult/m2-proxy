@@ -12,7 +12,6 @@ dependencies {
 
     implementation("io.micronaut:micronaut-http-server")
     implementation("io.micronaut:micronaut-runtime")
-    //implementation("io.micronaut:micronaut-validation")
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
     implementation("io.micronaut.micrometer:micronaut-micrometer-registry-statsd")
@@ -21,7 +20,6 @@ dependencies {
 
 }
 
-graalvmNative.toolchainDetection = false
 micronaut {
     runtime("netty")
     testRuntime("junit5")

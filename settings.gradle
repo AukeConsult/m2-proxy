@@ -1,4 +1,5 @@
 rootProject.name = 'm2-httpproxy'
 include 'node-server'
 include 'proxy-server'
+include 'proxy-server-2'
 include 'lib-shared'

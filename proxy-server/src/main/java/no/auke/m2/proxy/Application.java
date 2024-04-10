@@ -7,7 +7,6 @@ import io.micronaut.core.annotation.NonNull;
 import io.micronaut.runtime.Micronaut;
 import io.micronaut.runtime.server.event.ServerStartupEvent;
 import jakarta.inject.Inject;
-import no.auke.m2.proxy.server.base.ProxyMain;
 import no.auke.m2.proxy.server.access.AccessController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

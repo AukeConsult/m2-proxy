@@ -1,49 +1,66 @@
 package no.auke.m2.proxy.server.access;
 
-import no.auke.m2.proxy.base.ExtEndpoint;
-import no.auke.m2.proxy.server.base.ProxyMain;
+import no.auke.m2.proxy.server.base.EndpointPath;
 
 import java.util.Random;
+import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.random.RandomGenerator;
 
 public class SessionAccess {
 
     public static Random rnd = new Random();
 
-    private long startTime;
-    private AtomicLong lastAccess = new AtomicLong();
-    private AtomicLong sessionCount = new AtomicLong();
-    private AtomicLong transCount = new AtomicLong();
-    private AtomicLong bytesIn = new AtomicLong();
-    private AtomicLong bytesOut = new AtomicLong();
+    private final long startTime=System.currentTimeMillis();
+    private final AtomicLong lastAccess = new AtomicLong();
+    private final AtomicLong sessionCount = new AtomicLong();
+    private final AtomicLong transCount = new AtomicLong();
+    private final AtomicLong bytesIn = new AtomicLong();
+    private final AtomicLong bytesOut = new AtomicLong();
 
-    private final String userId;
-    private final String serverId;
-    private final String ipAddress;
     private final long timeToLive;
-    private final ExtEndpoint endpoint;
+    private final String endpointPath;
 
-    private String tokenPath;
-    private String token;
-    private long accessId;
+    private final String tokenPath;
+    private final String securityToken;
+    private final Set<String> ipAddresses;
+    private final Map<String,String> headers;
+    private final long accessId = rnd.nextLong(AccessController.MAX_ID);
 
-    public String getUserId() { return userId;}
-    public String getTokenPath() { return tokenPath; }
-    public ExtEndpoint getEndpoint() { return endpoint;}
+    public final String getTokenPath() { return tokenPath; }
+    public final String getEndpointPath() { return endpointPath;}
     public long getAccessId() {
         return accessId;
     }
-    public String getServerId() { return serverId;}
 
-    public SessionAccess(String userId, String serverId, String ipAddress, long timeToLive, ExtEndpoint endpoint) {
-        this.userId = userId;
+    private EndpointPath endPoint;
+    public EndpointPath getEndPoint() {return endPoint;}
+    public void setEndPoint(EndpointPath endPoint) {this.endPoint = endPoint;}
+
+    public SessionAccess() {
+        this.tokenPath = null;
+        this.endpointPath=null;
+        this.securityToken = null;
+        this.timeToLive = 0;
+        this.ipAddresses=null;
+        this.headers=null;
+    }
+
+    public SessionAccess(
+            String tokenPath,
+            String endpointPath,
+            String securityToken,
+            long timeToLive,
+            Set<String> ipAddresses,
+            Map<String,String> headers
+    ) {
+
+        this.tokenPath = tokenPath;
+        this.endpointPath=endpointPath;
+        this.securityToken = securityToken;
         this.timeToLive = timeToLive;
-        this.endpoint=endpoint;
-        this.ipAddress=ipAddress;
-        this.serverId=serverId;
-        this.accessId = rnd.nextLong(ProxyMain.MAX_ID);
-        this.startTime = System.currentTimeMillis();
+        this.ipAddresses=ipAddresses;
+        this.headers=headers;
     }
 
     public void setNewSession() {
@@ -57,17 +74,8 @@ public class SessionAccess {
         this.bytesOut.addAndGet(bytesOut);
     }
 
-    public SessionAccess setWithPath(String tokenPath) {
-        this.tokenPath = tokenPath;
-        return this;
-    }
-    public SessionAccess setWithToken(String token) {
-        this.token=token;
-        return this;
-    }
-
     public boolean isOk() {
-        return isValid() && endpoint!=null;
+        return isValid() && endPoint!=null;
     }
     public boolean isValid() {
         return System.currentTimeMillis()-startTime<timeToLive;

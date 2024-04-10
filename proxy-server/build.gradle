@@ -6,9 +6,32 @@ plugins {
 }
 
 dependencies {
+    implementation project(':proxy-server-2')
     implementation project(":lib-shared")
 }
 
 application {
     mainClass.set("no.auke.m2.proxy.Application")
+}
+
+
+graalvmNative.toolchainDetection = false
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("no.auke.m2.proxy.*")
+    }
+    aot {
+        // Please review carefully the optimizations enabled below
+        // Check https://micronaut-projects.github.io/micronaut-aot/latest/guide/ for more details
+        optimizeServiceLoading = false
+        convertYamlToJava = false
+        precomputeOperations = true
+        cacheEnvironment = true
+        optimizeClassLoading = true
+        deduceEnvironment = true
+        optimizeNetty = true
+    }
 }

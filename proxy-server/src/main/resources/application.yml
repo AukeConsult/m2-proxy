@@ -18,33 +18,29 @@ access-setup:
   time-to-live-minutes: 60
   check-period-seconds: 30
 
-  proxy-endpoint-list:
-    - endpoint-id: leifhttp
-      endpoint-type: HTTP
-      endpoint-host-name: localhost
-      endpoint-port: 3000
-    - endpoint-id: leif2
-      endpoint-type: HTTP
-      endpoint-url: http://localhost:3000
-    - endpoint-id: leifftp
-      endpoint-type: FTP
-      endpoint-url: ftp://localhost:3999
-
-  user-access-list:
-    - user-id: leifaccess
-      endpoint-id: leifhttp
-      ip-address: ""
-      token-path: "test"
-      token: ""
-    - user-id: leifaccess
-      endpoint-id: leifhttp
-      token-path: "test2"
-      token: ""
-
+  access-list:
+    - token-path: "123"
+      endpoint-path: test
+      access-token: ""
+      ip-addresses:
+        - localhost
+        - 0.0.0.0.0.0.1
+      keep-alive: 120
+      headers:
+        - key: "test"
+          value: "123456"
+        - key: "test2"
+          value: "333333 hei på deg"
+    - token-path: "123"
+      endpoint-path: test2
+      access-token: ""
+      ip-addresses: []
+      headers: []
 
 proxy-server:
   main-host: localhost
   server-instances:
+
     - server-id: "test1"
       server-type: HTTP
       boot-address:
@@ -53,6 +49,25 @@ proxy-server:
       core-poolsize: 5
       maximum-poolsize: 20
       keep-alivetime: 5
+
+      endpoints:
+        - path: "/test"
+          transport: TCP
+          host: localhost
+          port: 3000
+        - path: "/test"
+          transport: M2
+          host: localhost
+          port: 3000
+        - path: "m2/test"
+          transport: M2
+          host: localhost
+          port: 3001
+        - path: "tcp/test"
+          transport: TCP
+          host: localhost
+          port: 3002
+
     - server-id: "test2"
       server-type: FTP
       port: 4001

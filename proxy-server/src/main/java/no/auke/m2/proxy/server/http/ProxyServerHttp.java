@@ -1,9 +1,12 @@
-package no.auke.m2.proxy.server;
+package no.auke.m2.proxy.server.http;
 
-import no.auke.m2.proxy.server.base.*;
-import no.auke.m2.proxy.types.TypeProtocol;
-import no.auke.m2.proxy.types.TypeServer;
+import no.auke.m2.proxy.server.access.AccessController;
 import no.auke.m2.proxy.server.access.SessionAccess;
+import no.auke.m2.proxy.server.base.EndpointPath;
+import no.auke.m2.proxy.server.base.ProxyServer;
+import no.auke.m2.proxy.server.base.Session;
+import no.auke.m2.proxy.types.TransportProtocol;
+import no.auke.m2.proxy.types.TypeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,28 +17,28 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ProxyServerHttp extends ProxyServer {
     private static final Logger log = LoggerFactory.getLogger(ProxyServerHttp.class);
 
     @Override
     public Object readInput(BufferedReader inputStream) throws IOException {
-        String line = null;
-        while (inputStream.ready() && (line = inputStream.readLine()) != null) {
-            break;
+        if(inputStream.ready()) {
+            return inputStream.readLine();
         }
-        return line;
+        return null;
     }
 
     @Override
-    protected void executeRequest(final ProxyServer proxyServer, final Socket clientSocket, long requestId) {
+    protected void executeRequest(final ProxyServer proxyServer, final Socket client, long requestId) {
 
         // validate incoming request
         getRequestExecutor().submit(() -> {
 
             try {
 
-                BufferedReader inputStream = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                BufferedReader inputStream = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
                 List<String> header = new ArrayList<>();
                 header.add((String)readInput(inputStream));
@@ -48,10 +51,10 @@ public class ProxyServerHttp extends ProxyServer {
                 if(header.isEmpty()) {
 
                     log.info("{} -> RequestId: {}, request no content", getServerId(), requestId);
-                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
+                    PrintWriter out = new PrintWriter(client.getOutputStream());
                     out.println("HTTP/1.1 200 OK\r\n");
                     out.flush();
-                    clientSocket.close();
+                    client.close();
 
                 } else {
 
@@ -64,44 +67,44 @@ public class ProxyServerHttp extends ProxyServer {
                         line=(String)readInput(inputStream);
                     }
                     header.add(line);
-                    StringBuilder client_request = new StringBuilder();
+                    StringBuilder requestBuffer = new StringBuilder();
 
-                    SessionAccess access = getAccesController().getHttpAccessChecker()
-                            .checkHttpHeader(
-                                    clientSocket.getInetAddress(),
+                    SessionAccess access = getAccesController().getHttpAccessChecker(getEndPoints())
+                            .getAccess(
+                                    client.getInetAddress(),
                                     header,
-                                    client_request
+                                    requestBuffer
                             );
 
                     if(access!=null && access.isOk()) {
                         if(!clientSessions.containsKey(access.getAccessId())) {
-                            if(access.getEndpoint().typeProtocol == TypeProtocol.HTTP) {
-                                Session session = new SessionHttp(proxyServer,access);
+                            if(access.getEndPoint().transportProtocol == TransportProtocol.HTTP) {
+                                Session session = new SessionHttpTcp(proxyServer,access);
                                 clientSessions.put(access.getAccessId(),session);
                                 log.info("{} -> {}, User: {}, RequestId: {}, Open session, to external server: {}",
                                         getServerId(),
                                         access.getAccessId(),
-                                        access.getUserId(),
+                                        access.getEndpointPath(),
                                         requestId,
-                                        access.getEndpoint().toString()
+                                        access.getEndPoint().toString()
                                 );
                             }
                         }
-                        executeSession(clientSessions.get(access.getAccessId()),clientSocket, requestId, inputStream, client_request);
+                        executeSession(clientSessions.get(access.getAccessId()),client, requestId, inputStream, requestBuffer);
 
                     } else {
 
                         // client not accepted for proxy
                         String content = "<html><body>" +
                                 "<p>" +
-                                clientSocket.getInetAddress().getHostName() + ":" + clientSocket.getPort() +
+                                client.getInetAddress().getHostName() + ":" + client.getPort() +
                                 "</p>" +
                                 "<p>" +
                                 "not accepted" +
                                 "</p>" +
                                 "</body></html>";
 
-                        PrintWriter out = new PrintWriter(clientSocket.getOutputStream());
+                        PrintWriter out = new PrintWriter(client.getOutputStream());
                         out.println(
                                 "HTTP/1.1 200 OK\r\n" +
                                         "Content-Type: text/html\r\n" +
@@ -112,7 +115,7 @@ public class ProxyServerHttp extends ProxyServer {
                         out.flush();
                     }
                 }
-                clientSocket.close();
+                client.close();
 
             } catch (IOException e) {
                 log.warn("{} -> RequestId: {}, error: {}", getServerId(), requestId, e.getMessage());
@@ -120,17 +123,18 @@ public class ProxyServerHttp extends ProxyServer {
         });
     }
 
-    public ProxyServerHttp(ProxyMain mainService,
+    public ProxyServerHttp(AccessController accessController,
                            String serverId,
                            String bootAddress,
                            int port,
                            int inActiveTimeSeconds,
                            int corePooSize,
                            int maximumPoolSize,
-                           int keepAliveTime
+                           int keepAliveTime,
+                           Map<String, EndpointPath> endPoints
 
     ) {
-        super(mainService,serverId,bootAddress,port,inActiveTimeSeconds,corePooSize,maximumPoolSize,keepAliveTime, TypeServer.HTTP);
+        super(accessController,serverId,bootAddress,port,inActiveTimeSeconds,corePooSize,maximumPoolSize,keepAliveTime, endPoints, TypeServer.HTTP);
     }
 
 }
