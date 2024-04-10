@@ -7,7 +7,7 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 
 @Controller()
-public class MainController {
+public class MainRestController {
     @Get(uri = "", produces = MediaType.APPLICATION_JSON)
     public HttpResponse<?> mainPage() {
         return HttpResponse.status(HttpStatus.OK).body("{hello: hello}");

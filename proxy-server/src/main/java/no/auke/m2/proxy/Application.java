@@ -7,7 +7,8 @@ import io.micronaut.core.annotation.NonNull;
 import io.micronaut.runtime.Micronaut;
 import io.micronaut.runtime.server.event.ServerStartupEvent;
 import jakarta.inject.Inject;
-import no.auke.m2.proxy.server.ProxyMain;
+import no.auke.m2.proxy.server.base.ProxyMain;
+import no.auke.m2.proxy.server.access.AccessController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +30,9 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     @Inject
     protected Environment environment;
 
+    @Inject
+    private AccessController accessController;
+
     public static void main(String[] args) {
         Micronaut.run(Application.class, args);
     }
@@ -41,9 +45,14 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
 
         log.info("{} -> Start server: http://localhost:{}",name,port);
 
+        accessController.start();
         proxyMain.start();
 
-        getRuntime().addShutdownHook(new Thread(() -> proxyMain.stop()));
+        getRuntime().addShutdownHook(new Thread(() -> {
+            proxyMain.stop();
+            accessController.stop();
+        }));
+
     }
 
 }
