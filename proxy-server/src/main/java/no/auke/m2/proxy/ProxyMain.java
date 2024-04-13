@@ -7,6 +7,7 @@ import no.auke.m2.proxy.executors.ServiceBaseExecutor;
 import no.auke.m2.proxy.server.base.EndpointPath;
 import no.auke.m2.proxy.server.base.ProxyServer;
 import no.auke.m2.proxy.server.ftp.ProxyServerFtp;
+import no.auke.m2.proxy.server.http.ProxyServerHttpDebug;
 import no.auke.m2.proxy.server.sftp.ProxyServerSftp;
 import no.auke.m2.proxy.server.access.AccessController;
 import no.auke.m2.proxy.types.TransportProtocol;
@@ -56,6 +57,21 @@ public class ProxyMain extends ServiceBaseExecutor {
             if(serverType==TypeServer.HTTP) {
 
                 ProxyServer service = new ProxyServerHttp(accessController,
+                        (String) s.get("server-id"),
+                        (String) s.getOrDefault("boot-address",""),
+                        (int) s.getOrDefault("port",3001),
+                        (int) s.getOrDefault("inactive-time-seconds",60),
+                        (int) s.getOrDefault("core-poolsize",5),
+                        (int) s.getOrDefault("maximum-poolsize",20),
+                        (int) s.getOrDefault("keep-alivetime",5),
+                        endPoints
+                );
+                service.start();
+                servicesRunning.add(service);
+
+            } else if(serverType==TypeServer.DEBUG) {
+
+                ProxyServer service = new ProxyServerHttpDebug(accessController,
                         (String) s.get("server-id"),
                         (String) s.getOrDefault("boot-address",""),
                         (int) s.getOrDefault("port",3001),

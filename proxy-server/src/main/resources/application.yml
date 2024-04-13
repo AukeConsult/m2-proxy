@@ -47,34 +47,37 @@ access-setup:
 proxy-server:
   main-host: localhost
   server-instances:
-    - server-id: "test1"
-      server-type: HTTP
-      boot-address:
-      port: 4000
-      inactive-time-seconds: 60
-      core-poolsize: 5
-      maximum-poolsize: 20
-      keep-alivetime: 5
-      endpoints:
-        - path: "/test"
-          transport: TCP
-          host: localhost
-          port: 3000
-        - path: "/test"
-          transport: M2
-          host: localhost
-          port: 3000
-        - path: "m2/test"
-          transport: M2
-          host: localhost
-          port: 3001
-        - path: "tcp/test"
-          transport: TCP
-          host: localhost
-          port: 3002
-    - server-id: "test2"
-      server-type: FTP
-      port: 4001
+#    - server-id: "test1"
+#      server-type: HTTP
+#      boot-address:
+#      port: 4000
+#      inactive-time-seconds: 60
+#      core-poolsize: 5
+#      maximum-poolsize: 20
+#      keep-alivetime: 5
+#      endpoints:
+#        - path: "/test"
+#          transport: TCP
+#          host: localhost
+#          port: 3000
+#        - path: "/test"
+#          transport: M2
+#          host: localhost
+#          port: 3000
+#        - path: "m2/test"
+#          transport: M2
+#          host: localhost
+#          port: 3001
+#        - path: "tcp/test"
+#          transport: TCP
+#          host: localhost
+#          port: 3002
+#    - server-id: "test2"
+#      server-type: FTP
+#      port: 4001
+#    - server-id: "test3"
+#      server-type: SFTP
+#      port: 4003
     - server-id: "test3"
-      server-type: SFTP
+      server-type: DEBUG
       port: 4003

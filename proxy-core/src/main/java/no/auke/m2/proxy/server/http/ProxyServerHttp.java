@@ -77,6 +77,7 @@ public class ProxyServerHttp extends ProxyServer {
                             );
 
                     if(access!=null && access.isOk()) {
+
                         if(!clientSessions.containsKey(access.getAccessId())) {
                             if(access.getEndPoint().transportProtocol == TransportProtocol.HTTP) {
                                 Session session = new SessionHttpTcp(proxyServer,access);
