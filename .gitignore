@@ -9,9 +9,6 @@ build/
 *.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
 **/node_modules/
 !/node-server/dist/

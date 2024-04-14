@@ -1,0 +1,14 @@
+micronaut:
+  application:
+    name: tcp-server
+  server:
+    port: 8082
+    cors:
+      enabled: true
+
+---
+endpoints:
+  all:
+    path: self
+    enabled: true
+    sensitive: false

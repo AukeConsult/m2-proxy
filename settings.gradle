@@ -1,7 +1,7 @@
 rootProject.name = 'm2-httpproxy'
 include 'lib-shared'
+include 'lib-protbuf'
+include 'netty-server'
 include 'node-server'
 include 'proxy-core'
-include 'tcp-server'
 include 'proxy-server'
-

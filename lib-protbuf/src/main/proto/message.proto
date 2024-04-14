@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package proto.m2;
+
+message Message {
+  MessageType type = 1;
+  int32 id = 2;
+  int64 sessionId = 3;
+  int64 requestId = 4;
+  string message = 5;
+  Ping ping = 6;
+  HttpRequest request = 7;
+  HttpResponse response = 8;
+}
+
+enum MessageType {
+  INIT = 0;
+  PING = 1;
+  HTTP_REQUEST = 2;
+  HTTP_RESPONSE = 3;
+  MESSAGE = 4;
+}
+
+message Ping {
+  int32 id = 1;
+  string clientId = 2;
+  string localHost = 3;
+}
+
+message HttpRequest {
+  bytes header = 1;
+  bytes body = 2;
+}
+
+message HttpResponse {
+  bytes header = 1;
+  bytes body = 2;
+}
+

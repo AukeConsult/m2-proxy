@@ -7,9 +7,9 @@ version = appVersion + appVersionExtension
 
 dependencies {
 
-    runtimeOnly "org.yaml:snakeyaml"
 
     implementation 'org.slf4j:slf4j-api:1.7.32'
+    implementation 'org.yaml:snakeyaml:2.2'
 
     testImplementation 'org.mockito:mockito-all:2.0.2-beta'
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.1"
