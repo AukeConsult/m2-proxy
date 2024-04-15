@@ -1,8 +1,6 @@
 package m2.proxy;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -17,25 +15,21 @@ import java.util.concurrent.TimeUnit;
 public class NettyClient extends Netty {
     private static final Logger log = LoggerFactory.getLogger(NettyClient.class);
 
-    private final String host;
-    private final int port;
-    private final String clientId;
+    private final EventLoopGroup group;
 
-    private EventLoopGroup group;
+    private Handler handler;
+    public Handler getHandler() { return handler;}
 
     public NettyClient(String host, int port) {
-        this.host = host;
-        this.port = port;
-        this.clientId = UUID.randomUUID().toString().substring(0,5);
-        this.sessionId = rnd.nextLong();
+        super(UUID.randomUUID().toString().substring(0,5), host, port,null);
         group = new NioEventLoopGroup();
     }
 
-    public void start()  {
-
+    @Override
+    protected void onStart() {
         log.info("client start");
-        new Thread(() -> {
-
+        getExecutor().execute(() -> {
+            final Netty server=this;
             try {
                 Bootstrap b = new Bootstrap();
                 b.group(group)
@@ -43,44 +37,45 @@ public class NettyClient extends Netty {
                         .handler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {
-                                ch.pipeline().addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                                ch.pipeline().addFirst(new BigMessageDecoder(server));
+                                ch.pipeline().addLast(new SimpleChannelInboundHandler<Message>() {
                                     @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws InvalidProtocolBufferException {
-                                        Message m = readMessage(ctx, msg);
-                                        printMessage(ctx.channel().id().asShortText(), m, ctx.channel().remoteAddress());
+                                    protected void channelRead0(ChannelHandlerContext ctx, Message msg)  {
+                                        handler.prosessMessage(msg);
                                     }
                                     @Override
                                     public void channelActive(ChannelHandlerContext ctx) {
-                                        log.info("Active, ch: {}, addr: {}",
-                                                ctx.channel().id().asShortText(),
-                                                ctx.channel().localAddress().toString()
-                                        );
-                                        sendMessage(ctx,"I am here");
-                                        ctx.executor().scheduleAtFixedRate(() -> {
-                                            sendMessage(ctx,"Hello server: " + System.currentTimeMillis());
-                                        }, 0, 2, TimeUnit.SECONDS);
-
-                                        ctx.executor().scheduleAtFixedRate(() -> {
-                                            sendPing(ctx,clientId,ctx.channel().localAddress());
-                                        }, 0, 10, TimeUnit.SECONDS);
+                                        handler = new Handler(server,ctx.channel().id(),ctx);
+                                        handler.sendPublicKey();
+                                        ctx.executor().scheduleAtFixedRate(() ->
+                                                handler.sendMessage("Hello server: " + System.currentTimeMillis())
+                                                , 0, 2, TimeUnit.SECONDS);
                                     }
 
                                 });
                             }
                         });
 
-                ChannelFuture f = b.connect(host, port).sync();
+                ChannelFuture f = b.connect(localHost, localPort).sync();
                 f.channel().closeFuture().sync();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-
-        }).start();
-
+        });
     }
 
-    public void stop() {
+    @Override
+    protected void onStop() {
         group.shutdownGracefully();
+        getHandler().printWork();
         log.info("client stop");
+    }
+
+    @Override
+    final protected void execute() {
+        while(isRunning()) {
+            waitfor(10000);
+            getHandler().printWork();
+        }
     }
 }

@@ -4,13 +4,11 @@ package proto.m2;
 
 message Message {
   MessageType type = 1;
-  int32 id = 2;
-  int64 sessionId = 3;
-  int64 requestId = 4;
-  string message = 5;
-  Ping ping = 6;
-  HttpRequest request = 7;
-  HttpResponse response = 8;
+  AesKey aesKey = 2;
+  PublicRsaKey publicKey = 3;
+  Ping ping = 4;
+  bytes subMessage = 5;
+  string message = 6;
 }
 
 enum MessageType {
@@ -19,21 +17,38 @@ enum MessageType {
   HTTP_REQUEST = 2;
   HTTP_RESPONSE = 3;
   MESSAGE = 4;
+  PUBLIC_KEY = 5;
 }
 
 message Ping {
+  string clientId = 1;
+  string localHost = 2;
+  int32 localPort = 3;
+  bool haskey = 4;
+}
+
+message HttpInRequest {
+  int64 sessionId = 1;
+  int64 requestId = 2;
+  string verb = 3;
+  string header = 4;
+  string body = 5;
+}
+
+message HttpOutResponse {
+  int64 sessionId = 1;
+  int64 requestId = 2;
+  int32 status = 3;
+  string header = 4;
+  string body = 5;
+}
+
+message PublicRsaKey {
   int32 id = 1;
-  string clientId = 2;
-  string localHost = 3;
+  bytes key = 2;
 }
-
-message HttpRequest {
-  bytes header = 1;
-  bytes body = 2;
-}
-
-message HttpResponse {
-  bytes header = 1;
-  bytes body = 2;
+message AesKey {
+  int32 id = 1;
+  bytes key = 2;
 }
 

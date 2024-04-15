@@ -7,11 +7,11 @@ plugins {
 
 dependencies {
 
-    implementation 'com.google.protobuf:protobuf-java:3.6.1'
-    implementation 'com.google.protobuf:protobuf-java-util:3.6.1'
+    implementation 'com.google.protobuf:protobuf-java:4.26.1'
+    implementation 'com.google.protobuf:protobuf-java-util:4.26.1'
 
-    implementation 'io.grpc:grpc-stub:1.15.1'
-    implementation 'io.grpc:grpc-protobuf:1.15.1'
+//    implementation 'io.grpc:grpc-stub:1.15.1'
+//    implementation 'io.grpc:grpc-protobuf:1.15.1'
 
     implementation project(':proxy-core')
     implementation project(':lib-protbuf')

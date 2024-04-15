@@ -1,14 +1,14 @@
 package m2.proxy;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass.*;
+import proto.m2.MessageOuterClass;
 
+import java.security.KeyPair;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -16,74 +16,74 @@ import java.util.concurrent.TimeUnit;
 public class NettyServer extends Netty {
 
     private static final Logger log = LoggerFactory.getLogger(NettyServer.class);
-    private final int port;
 
-    private EventLoopGroup bossGroup;
-    private EventLoopGroup workerGroup;
+    private final Map<ChannelId, Handler> clients = new ConcurrentHashMap<>();
+    public Map<ChannelId, Handler> getClients() { return clients;}
 
-    private Map<ChannelId,ClientHandler> clients = new ConcurrentHashMap<>();
+    private final EventLoopGroup bossGroup;
+    private final EventLoopGroup workerGroup;
 
-    public NettyServer(int port) {
-        this.port = port;
+    public NettyServer(int port, KeyPair rsaKey) {
+        super("SERVER","",port,rsaKey);
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();
     }
 
-    public void start()  {
+    @Override
+    protected void onStart() {
 
         log.info("server start");
+        getExecutor().execute(() -> {
 
-        new Thread(() -> {
             try {
-
+                final Netty server=this;
                 ServerBootstrap b = new ServerBootstrap();
                 b.group(bossGroup, workerGroup)
                         .channel(NioServerSocketChannel.class)
                         .childHandler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {
-                                ch.pipeline().addLast(new SimpleChannelInboundHandler<ByteBuf>() {
+                                ch.pipeline().addFirst(new BigMessageDecoder(server));
+                                ch.pipeline().addLast(new SimpleChannelInboundHandler<MessageOuterClass.Message>() {
                                     @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-                                        Message m = readMessage(ctx, msg);
-                                        clients.get(ctx.channel().id()).prosessMessage(m);
-                                        printMessage(ctx.channel().id().asShortText(), m, ctx.channel().remoteAddress());
+                                    protected void channelRead0(ChannelHandlerContext ctx, MessageOuterClass.Message msg) {
+                                        clients.get(ctx.channel().id()).prosessMessage(msg);
                                     }
-
                                     @Override
                                     public void channelActive(ChannelHandlerContext ctx) {
-                                        log.info("active client ch: {}, addr: {}",
-                                                ctx.channel().id().asShortText(),
-                                                ctx.channel().remoteAddress().toString()
-                                        );
-                                        clients.put(ctx.channel().id(),new ClientHandler(ctx.channel().id(),ctx));
-                                        ctx.executor().scheduleAtFixedRate(() -> {
-                                            sendMessage(ctx,"Hello from server: " + System.currentTimeMillis());
-                                        }, 0, 15, TimeUnit.SECONDS);
+                                        clients.put(ctx.channel().id(),new Handler(server,ctx.channel().id(),ctx));
+                                        clients.get(ctx.channel().id()).sendPublicKey();
+                                        ctx.executor().scheduleAtFixedRate(() ->
+                                                clients.get(ctx.channel().id()).sendMessage("Hello client: " + System.currentTimeMillis()), 0, 2, TimeUnit.SECONDS);
                                     }
-
                                 });
                             }
                         })
                         .option(ChannelOption.SO_BACKLOG, 128)
                         .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-                ChannelFuture f = b.bind(port).sync();
+                ChannelFuture f = b.bind(localPort).sync();
                 f.channel().closeFuture().sync();
 
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-
-        }).start();
-
+        });
     }
 
-    public void stop(){
+    @Override
+    protected void onStop() {
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
+        getClients().values().forEach(Handler::printWork);
         log.info("server stop");
-
     }
 
+    @Override
+    final protected void execute() {
+        while(isRunning()) {
+            waitfor(10000);
+            getClients().values().forEach(Handler::printWork);
+        }
+    }
 }

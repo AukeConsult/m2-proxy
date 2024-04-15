@@ -1,73 +1,51 @@
 package m2.proxy;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelHandlerContext;
+import m2.proxy.executors.ServiceBaseExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass.*;
+import java.security.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import java.net.SocketAddress;
-import java.util.Random;
+public abstract class Netty extends ServiceBaseExecutor {
 
-public abstract class Netty {
-    private static final Logger log = LoggerFactory.getLogger(NettyClient.class);
+    protected Map<String, Handler> activeClients = new ConcurrentHashMap<>();
+    public Map<String, Handler> getActiveClients() { return activeClients; }
 
-    static Random rnd = new Random();
+    protected final String clientId;
+    protected final String localHost;
+    protected final int localPort;
+    protected final KeyPair rsaKey;
 
-    public long sessionId = rnd.nextLong();
-
-    public Message readMessage(ChannelHandlerContext ctx, ByteBuf msg) throws InvalidProtocolBufferException {
-        byte[] buf = new byte[msg.readableBytes()];
-        msg.getBytes(0,buf);
-        return Message.parseFrom(buf);
-    }
-
-    public void printMessage(String id, Message m, SocketAddress remote)  {
-
-        if(m.getType()== MessageType.MESSAGE) {
-            log.info("MESSAGE ch: {}, m: {}, addr: {}",
-                    id,
-                    m.getMessage(),
-                    remote.toString()
-            );
-        } else if(m.getType()== MessageType.PING) {
-            log.info("PING ch: {}, clientId: {}, localAddr: {}, addr: {}",
-                    id,
-                    m.getPing().getClientId(),
-                    m.getPing().getLocalHost(),
-                    remote.toString()
-            );
+    public Netty(String clientId, String localHost, int localPort, KeyPair rsaKey) {
+        if(rsaKey==null) {
+            try {
+                KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+                generator.initialize(2048);
+                this.rsaKey = generator.generateKeyPair();
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            this.rsaKey=rsaKey;
         }
+        this.clientId=clientId;
+        this.localHost=localHost;
+        this.localPort=localPort;
     }
 
+    abstract void onStart();
+    abstract void onStop();
 
-    public void sendMessage(ChannelHandlerContext ctx, String msg) {
-        ctx.writeAndFlush(Unpooled.wrappedBuffer(
-                Message.newBuilder()
-                        .setType(MessageType.MESSAGE)
-                        .setMessage(msg)
-                        .setSessionId(this.sessionId)
-                        .setRequestId(rnd.nextLong())
-                        .build()
-                        .toByteArray()
-        ));
-    }
-    public void sendPing(ChannelHandlerContext ctx, String clientId, SocketAddress address) {
-        ctx.writeAndFlush(Unpooled.wrappedBuffer(
-                Message.newBuilder()
-                        .setType(MessageType.PING)
-                        .setPing(Ping.newBuilder()
-                                .setClientId(clientId)
-                                .setLocalHost(address.toString())
-                                .build()
-                        )
-                        .setRequestId(rnd.nextLong())
-                        .setSessionId(this.sessionId)
-                        .build()
-                        .toByteArray()
-        ));
-    }
+    @Override
+    final protected boolean open() { return true;}
+    @Override
+    protected void startServices() { onStart();}
+
+    @Override
+    final protected void close() { onStop();}
+    @Override
+    final protected void forceClose() { onStop(); }
+
 
 }
