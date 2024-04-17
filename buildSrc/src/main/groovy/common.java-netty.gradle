@@ -1,0 +1,7 @@
+plugins {
+    id("common.java-conventions")
+}
+dependencies {
+    implementation 'io.netty:netty-all:4.1.109.Final'
+}
+

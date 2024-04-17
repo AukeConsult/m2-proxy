@@ -1,4 +1,4 @@
-package m2.proxy;
+package m2.proxy.access;
 
 import m2.proxy.types.TransportProtocol;
 

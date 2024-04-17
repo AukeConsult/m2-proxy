@@ -1,7 +1,5 @@
 package m2.proxy.access;
 
-import m2.proxy.EndpointPath;
-
 import java.util.Random;
 import java.util.Set;
 import java.util.Map;

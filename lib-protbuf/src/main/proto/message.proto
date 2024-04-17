@@ -22,7 +22,7 @@ enum MessageType {
 
 message Ping {
   string clientId = 1;
-  string localHost = 2;
+  string localAddr = 2;
   int32 localPort = 3;
   bool haskey = 4;
 }

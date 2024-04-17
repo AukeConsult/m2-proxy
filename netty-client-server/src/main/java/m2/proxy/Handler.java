@@ -33,10 +33,10 @@ public class Handler {
 
     private final ChannelId channelId;
     private final ChannelHandlerContext ctx;
-    private final SocketAddress remoteAddr;
+    private final SocketAddress remoteAddress;
     private final Netty server;
 
-    AtomicReference<String> remoteLocalHost = new AtomicReference<>();
+    AtomicReference<String> remoteLocalAddress = new AtomicReference<>();
     AtomicInteger remoteLocalPort = new AtomicInteger();
     AtomicReference<String> remoteClientId = new AtomicReference<>();
 
@@ -76,7 +76,7 @@ public class Handler {
 
         this.channelId=channelId;
         this.ctx=ctx;
-        this.remoteAddr=ctx.channel().remoteAddress();
+        this.remoteAddress =ctx.channel().remoteAddress();
         this.server=server;
 
         this.httpHandler = new HttpHandler(server);
@@ -109,16 +109,16 @@ public class Handler {
                 inWork.ping.incrementAndGet();
                 inWork.bytes.addAndGet(m.getSerializedSize());
 
-                log.info("PING, {} -> ch: {}, localAddr {}:{}, addr: {}",
+                log.info("PING, {} -> ch: {}, remoteLocalAddr {}:{}, remoteAddr: {}",
                         server.clientId,
                         channelId.asShortText(),
-                        m.getPing().getLocalHost(),
+                        m.getPing().getLocalAddr(),
                         m.getPing().getLocalPort(),
-                        remoteAddr.toString()
+                        remoteAddress.toString()
                 );
 
                 remoteClientId.set(m.getPing().getClientId());
-                remoteLocalHost.set(m.getPing().getLocalHost());
+                remoteLocalAddress.set(m.getPing().getLocalAddr());
                 remoteLocalPort.set(m.getPing().getLocalPort());
                 remoteHasKey.set(m.getPing().getHaskey());
 
@@ -142,7 +142,7 @@ public class Handler {
                 log.info("GOT KEY, ch: {}, KEYID: {}, addr: {}",
                         channelId.asShortText(),
                         remoteKeyId.get(),
-                        remoteAddr.toString()
+                        remoteAddress.toString()
                 );
                 sendPing();
 
@@ -154,7 +154,7 @@ public class Handler {
                         server.clientId,
                         channelId.asShortText(),
                         m.getSubMessage().toStringUtf8(),
-                        remoteAddr.toString()
+                        remoteAddress.toString()
                 );
             }
 
@@ -188,8 +188,8 @@ public class Handler {
                 .setType(MessageType.PING)
                 .setPing(Ping.newBuilder()
                         .setClientId(server.clientId)
-                        .setLocalHost(server.localHost)
-                        .setLocalPort(server.localPort)
+                        .setLocalAddr(server.getLocalAddress())
+                        .setLocalPort(server.getLocalPort())
                         .setHaskey(hasRemoteKey.get())
                         .build()
                 )
@@ -232,7 +232,7 @@ public class Handler {
                 log.warn("REMOTE MISSING KEY ch: {}, keyid: {}, addr: {}",
                         channelId.asShortText(),
                         server.rsaKey.getPublic().hashCode(),
-                        remoteAddr.toString()
+                        remoteAddress.toString()
                 );
             }
         });
@@ -246,7 +246,7 @@ public class Handler {
                 ,
                 server.clientId,
                 channelId.asShortText(),
-                remoteAddr.toString(),
+                remoteAddress.toString(),
                 outWork.ping.get(),
                 outWork.key.get(),
                 outWork.message.get(),

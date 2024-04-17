@@ -1,0 +1,71 @@
+plugins {
+    id("common.java-netty")
+}
+
+apply plugin: 'java'
+
+dependencies {
+
+    implementation 'com.google.protobuf:protobuf-java:4.26.1'
+    implementation 'com.google.protobuf:protobuf-java-util:4.26.1'
+
+    implementation project(':proxy-core')
+    implementation project(':lib-protbuf')
+    implementation project(":lib-shared")
+}
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+testing {
+    suites {
+        integrationTest(JvmTestSuite) {
+            dependencies {
+                implementation project()
+            }
+        }
+    }
+}
+
+task buildNettyServer(type: Jar) {
+    group "build"
+    manifest {
+        attributes 'Main-Class': 'm2.proxy.NettyServerApp'
+    }
+    archiveBaseName = 'NettyServer'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task buildNettyClient(type: Jar) {
+    group "build"
+    manifest {
+        attributes 'Main-Class': 'm2.proxy.NettyClientApp'
+    }
+    archiveBaseName = 'NettyClient'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task copyAll() {
+    group "build"
+    copy {
+
+        from 'build/libs/NettyClient-' + appVersion + appVersionExtension +'.jar'
+        into "run"
+        rename ('NettyClient-' + appVersion + appVersionExtension +'.jar','Client.jar')
+
+        from 'build/libs/NettyServer-' + appVersion + appVersionExtension +'.jar'
+        into "run"
+        rename ('NettyServer-' + appVersion + appVersionExtension +'.jar','Server.jar')
+    }
+}
+

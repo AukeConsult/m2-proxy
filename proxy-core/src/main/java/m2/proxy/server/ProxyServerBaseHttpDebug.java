@@ -1,8 +1,7 @@
-package m2.proxy.httpserver;
+package m2.proxy.server;
 
-import m2.proxy.EndpointPath;
+import m2.proxy.access.EndpointPath;
 import m2.proxy.access.AccessController;
-import m2.proxy.ProxyServerBase;
 import m2.proxy.types.TypeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

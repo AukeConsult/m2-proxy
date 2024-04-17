@@ -4,10 +4,12 @@ package m2.proxy;
 import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import m2.proxy.access.EndpointPath;
 import m2.proxy.executors.ServiceBaseExecutor;
 import m2.proxy.access.AccessController;
-import m2.proxy.httpserver.ProxyServerBaseHttp;
-import m2.proxy.httpserver.ProxyServerBaseHttpDebug;
+import m2.proxy.server.ProxyServerBase;
+import m2.proxy.server.ProxyServerBaseHttp;
+import m2.proxy.server.ProxyServerBaseHttpDebug;
 import m2.proxy.types.TransportProtocol;
 import m2.proxy.types.TypeServer;
 import org.slf4j.Logger;
@@ -49,7 +51,6 @@ public class ProxyMain extends ServiceBaseExecutor {
                 int port = (int)e.getOrDefault("port",3000);
                 endPoints.put(path,new EndpointPath(path,transport).setHost(host,port));
             });
-
 
             TypeServer serverType = TypeServer.valueOf((String) s.getOrDefault("server-type","http"));
             if(serverType==TypeServer.HTTP) {

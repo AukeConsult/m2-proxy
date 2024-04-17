@@ -6,14 +6,14 @@ plugins {
 }
 
 dependencies {
+    implementation project(':netty-client-server')
     implementation project(':proxy-core')
     implementation project(":lib-shared")
 }
 
 application {
-    mainClass.set("no.auke.m2.proxy.Application")
+    mainClass.set("m2.proxy.Application")
 }
-
 
 graalvmNative.toolchainDetection = false
 micronaut {
@@ -21,7 +21,7 @@ micronaut {
     testRuntime("junit5")
     processing {
         incremental(true)
-        annotations("no.auke.m2.proxy.*")
+        annotations("m2.proxy.*")
     }
     aot {
         // Please review carefully the optimizations enabled below

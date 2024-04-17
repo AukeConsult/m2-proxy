@@ -1,6 +1,6 @@
 package m2.proxy;
 
-import m2.proxy.executors.ServiceBaseExecutor;
+import m2.proxy.executors.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,17 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class ServerTest {
+public class ServerIntegrationTest {
 
 
     final NettyServer server;
     final Random rnd = new Random();
 
-    public ServerTest() throws NoSuchAlgorithmException {
+    public ServerIntegrationTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         KeyPair rsaKey = generator.generateKeyPair();
-        server = new NettyServer(4000, rsaKey);
+        server = new NettyServer(4000, "", rsaKey);
     }
 
     @BeforeEach
@@ -38,9 +38,9 @@ public class ServerTest {
     @Test
     void one_client() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000);
+        NettyClient client1 = new NettyClient("localhost",4000, "");
         client1.start();
-        Thread.sleep(1000*10);
+        Thread.sleep(1000*2);
         client1.stop();
 
     }
@@ -48,9 +48,9 @@ public class ServerTest {
     @Test
     void one_client_big_message() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000);
+        NettyClient client1 = new NettyClient("localhost",4000, "");
         client1.start();
-        Thread.sleep(10000);
+        Thread.sleep(1000);
 
         byte[] b = new byte[1000000];
         rnd.nextBytes(b);
@@ -65,9 +65,9 @@ public class ServerTest {
     @Test
     void many_clients() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000);
-        NettyClient client2 = new NettyClient("localhost",4000);
-        NettyClient client3 = new NettyClient("localhost",4000);
+        NettyClient client1 = new NettyClient("localhost",4000, "");
+        NettyClient client2 = new NettyClient("localhost",4000, "");
+        NettyClient client3 = new NettyClient("localhost",4000, "");
 
         client1.start();
         client2.start();
@@ -83,7 +83,7 @@ public class ServerTest {
     public class RandomClient extends NettyClient {
 
         public RandomClient(String host, int port) {
-            super(host, port);
+            super(host, port, "");
         }
 
         @Override

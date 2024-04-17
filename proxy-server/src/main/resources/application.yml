@@ -44,6 +44,9 @@ access-setup:
         - key: "test2"
           value: "333333 hei på deg"
 
+netty-server:
+  port: 5000
+
 proxy-server:
   main-host: localhost
   server-instances:

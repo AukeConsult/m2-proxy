@@ -39,7 +39,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
     @Override
     public final void start() {
         if(!running.getAndSet(true)) {
-            log.debug("Starting");
+
             stopped.set(false);
             if(open()) {
 

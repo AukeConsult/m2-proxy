@@ -14,3 +14,4 @@ build/
 !/node-server/dist/
 **/logs/
 
+**/run/

@@ -23,16 +23,19 @@ public class NettyServer extends Netty {
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
 
-    public NettyServer(int port, KeyPair rsaKey) {
-        super("SERVER","",port,rsaKey);
+    public NettyServer(int serverPort, String localAddress, KeyPair rsaKey) {
+        super("SERVER","",serverPort,localAddress,rsaKey);
+
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();
+        setLocalPort(serverPort);
+
     }
 
     @Override
-    protected void onStart() {
+    public void onStart() {
 
-        log.info("server start");
+        log.info("Starting netty server on -> {}:{} ", getLocalAddress(),getLocalPort());
         getExecutor().execute(() -> {
 
             try {
@@ -62,7 +65,7 @@ public class NettyServer extends Netty {
                         .option(ChannelOption.SO_BACKLOG, 128)
                         .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-                ChannelFuture f = b.bind(localPort).sync();
+                ChannelFuture f = b.bind(serverAddr,serverPort).sync();
                 f.channel().closeFuture().sync();
 
             } catch (InterruptedException e) {
@@ -72,11 +75,11 @@ public class NettyServer extends Netty {
     }
 
     @Override
-    protected void onStop() {
+    public void onStop() {
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
         getClients().values().forEach(Handler::printWork);
-        log.info("server stop");
+        log.info("Netty server stopped");
     }
 
     @Override
@@ -86,4 +89,5 @@ public class NettyServer extends Netty {
             getClients().values().forEach(Handler::printWork);
         }
     }
+
 }

@@ -17,7 +17,7 @@ import static java.lang.Runtime.getRuntime;
 
 @ConfigurationProperties("micronaut.application")
 public class Application implements ApplicationEventListener<ServerStartupEvent> {
-    private static final Logger log = LoggerFactory.getLogger(Application.class);
+    private static final Logger log = LoggerFactory.getLogger(NettyServerApp.class);
 
     // parameter
     public String name;
@@ -27,13 +27,16 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     ProxyMain proxyMain;
 
     @Inject
+    TcpServerMain tcpServerMain;
+
+    @Inject
     protected Environment environment;
 
     @Inject
     private AccessController accessController;
 
     public static void main(String[] args) {
-        Micronaut.run(Application.class, args);
+        Micronaut.run(NettyServerApp.class, args);
     }
 
     @Override
@@ -46,13 +49,15 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
 
         try {
             accessController.start();
-            proxyMain.start();
+            //proxyMain.start();
+            tcpServerMain.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         getRuntime().addShutdownHook(new Thread(() -> {
-            proxyMain.stop();
+            //proxyMain.stop();
+            tcpServerMain.stop();
             accessController.stop();
         }));
 

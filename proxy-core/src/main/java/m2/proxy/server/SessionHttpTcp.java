@@ -1,6 +1,5 @@
-package m2.proxy.httpserver;
+package m2.proxy.server;
 
-import m2.proxy.ProxyServerBase;
 import m2.proxy.access.SessionAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -20,19 +20,28 @@ public class NettyClient extends Netty {
     private Handler handler;
     public Handler getHandler() { return handler;}
 
-    public NettyClient(String host, int port) {
-        super(UUID.randomUUID().toString().substring(0,5), host, port,null);
+    public NettyClient(String clientId, String serverAddr, int ServerPort, String localAddress) {
+        super(
+                clientId==null?UUID.randomUUID().toString().substring(0,5):clientId,
+                serverAddr, ServerPort, localAddress, null
+        );
         group = new NioEventLoopGroup();
+        setLocalPort(0);
+    }
+
+    public NettyClient(String serverHost, int ServerPort, String bindAddress) {
+        this(null, serverHost, ServerPort, bindAddress);
     }
 
     @Override
-    protected void onStart() {
-        log.info("client start");
+    public void onStart() {
+        log.info("Netty client start on {}:{}, connect to host -> {}:{}",
+                getLocalAddress(), getLocalPort(), serverAddr,serverPort);
         getExecutor().execute(() -> {
             final Netty server=this;
             try {
-                Bootstrap b = new Bootstrap();
-                b.group(group)
+                Bootstrap bootstrap = new Bootstrap();
+                bootstrap.group(group)
                         .channel(NioSocketChannel.class)
                         .handler(new ChannelInitializer<SocketChannel>() {
                             @Override
@@ -56,7 +65,7 @@ public class NettyClient extends Netty {
                             }
                         });
 
-                ChannelFuture f = b.connect(localHost, localPort).sync();
+                ChannelFuture f = bootstrap.connect(serverAddr, serverPort).sync();
                 f.channel().closeFuture().sync();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -65,7 +74,7 @@ public class NettyClient extends Netty {
     }
 
     @Override
-    protected void onStop() {
+    public void onStop() {
         group.shutdownGracefully();
         getHandler().printWork();
         log.info("client stop");
@@ -75,7 +84,9 @@ public class NettyClient extends Netty {
     final protected void execute() {
         while(isRunning()) {
             waitfor(10000);
-            getHandler().printWork();
+            if(getHandler()!=null) {
+                getHandler().printWork();
+            }
         }
     }
 }

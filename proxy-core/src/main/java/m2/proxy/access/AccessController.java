@@ -4,7 +4,6 @@ import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import m2.proxy.executors.ServiceBaseExecutor;
-import m2.proxy.EndpointPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
