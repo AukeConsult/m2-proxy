@@ -1,4 +1,4 @@
-package m2.proxy;
+package m2.proxy.tcp;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
@@ -8,11 +8,11 @@ import proto.m2.MessageOuterClass;
 
 import java.util.List;
 
-public class BigMessageDecoder extends ByteToMessageDecoder {
+public class MessageDecoder extends ByteToMessageDecoder {
 
     final public static int MESSAGE_ID = 901246789;
-    final Netty server;
-    public BigMessageDecoder(Netty server) {
+    final TcpBase server;
+    public MessageDecoder(TcpBase server) {
         this.server=server;
     }
 

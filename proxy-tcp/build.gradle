@@ -33,39 +33,36 @@ testing {
     }
 }
 
-task buildNettyServer(type: Jar) {
-    group "build"
+task buildServer(type: Jar) {
     manifest {
-        attributes 'Main-Class': 'm2.proxy.NettyServerApp'
+        attributes 'Main-Class': 'm2.proxy.ProxyTcpServer'
     }
-    archiveBaseName = 'NettyServer'
+    archiveBaseName = 'proxy-tcp-server'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
 
-task buildNettyClient(type: Jar) {
-    group "build"
+task buildClient(type: Jar) {
     manifest {
-        attributes 'Main-Class': 'm2.proxy.NettyClientApp'
+        attributes 'Main-Class': 'm2.proxy.ProxyTcpClient'
     }
-    archiveBaseName = 'NettyClient'
+    archiveBaseName = 'proxy-tcp-client'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
 
-task copyAll() {
+task buildRUN() {
     group "build"
+    dependsOn(buildClient)
+    dependsOn(buildServer)
     copy {
-
-        from 'build/libs/NettyClient-' + appVersion + appVersionExtension +'.jar'
+        from 'build/libs/proxy-tcp-client-' + appVersion + appVersionExtension +'.jar'
         into "run"
-        rename ('NettyClient-' + appVersion + appVersionExtension +'.jar','Client.jar')
 
-        from 'build/libs/NettyServer-' + appVersion + appVersionExtension +'.jar'
+        from 'build/libs/proxy-tcp-server-' + appVersion + appVersionExtension +'.jar'
         into "run"
-        rename ('NettyServer-' + appVersion + appVersionExtension +'.jar','Server.jar')
     }
 }
 

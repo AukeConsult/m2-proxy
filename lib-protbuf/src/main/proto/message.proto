@@ -2,53 +2,97 @@ syntax = "proto3";
 
 package proto.m2;
 
-message Message {
-  MessageType type = 1;
-  AesKey aesKey = 2;
-  PublicRsaKey publicKey = 3;
-  Ping ping = 4;
-  bytes subMessage = 5;
-  string message = 6;
-}
-
 enum MessageType {
   INIT = 0;
   PING = 1;
-  HTTP_REQUEST = 2;
-  HTTP_RESPONSE = 3;
+  REQUEST = 2;
+  REPLY = 3;
   MESSAGE = 4;
   PUBLIC_KEY = 5;
 }
 
+
+
+enum PingStatus {
+  ONINIT = 0;
+  HASINIT = 1;
+  HASKEY = 2;
+  DISCONNECTED = 3;
+  BUSY = 4;
+}
+
 message Ping {
+  PingStatus status = 1;
+  string message = 2;
+}
+
+message Message {
+  MessageType type = 1;
+  AesKey aesKey = 2;
+  PublicRsaKey publicKey = 3;
+  Init init = 4;
+  Ping ping = 5;
+  bytes subMessage = 6;
+  Request request = 7;
+  Reply reply = 8;
+}
+
+message Init {
   string clientId = 1;
   string localAddr = 2;
   int32 localPort = 3;
-  bool haskey = 4;
 }
 
-message HttpInRequest {
-  int64 sessionId = 1;
-  int64 requestId = 2;
-  string verb = 3;
-  string header = 4;
-  string body = 5;
+enum RequestType {
+  NONE = 0;
+  PLAIN = 1;
+  HTTP = 2;
+  FTP = 3;
 }
 
-message HttpOutResponse {
+enum ReplyStatus {
+  OK = 0;
+  TIMEOUT = 1;
+  SERVICE_DOWN = 3;
+}
+
+message Request {
   int64 sessionId = 1;
   int64 requestId = 2;
-  int32 status = 3;
-  string header = 4;
-  string body = 5;
+  RequestType type = 3;
+  bytes requestMessage = 4;
+}
+
+message Reply {
+  int64 sessionId = 1;
+  int64 requestId = 2;
+  RequestType type = 3;
+  ReplyStatus status = 4;
+  bytes replyMessage = 5;
 }
 
 message PublicRsaKey {
   int32 id = 1;
   bytes key = 2;
 }
+
 message AesKey {
   int32 id = 1;
   bytes key = 2;
 }
 
+enum HttpVerb {
+  GET = 0;
+  PUT = 1;
+}
+
+message HttpRequest {
+    HttpVerb verb=1;
+    bytes header=2;
+    bytes body=3;
+}
+
+message HttpReply {
+  bytes header=1;
+  bytes body=2;
+}

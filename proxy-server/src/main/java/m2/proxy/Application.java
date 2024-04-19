@@ -17,7 +17,7 @@ import static java.lang.Runtime.getRuntime;
 
 @ConfigurationProperties("micronaut.application")
 public class Application implements ApplicationEventListener<ServerStartupEvent> {
-    private static final Logger log = LoggerFactory.getLogger(NettyServerApp.class);
+    private static final Logger log = LoggerFactory.getLogger(ProxyTcpServer.class);
 
     // parameter
     public String name;
@@ -36,7 +36,7 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     private AccessController accessController;
 
     public static void main(String[] args) {
-        Micronaut.run(NettyServerApp.class, args);
+        Micronaut.run(ProxyTcpServer.class, args);
     }
 
     @Override

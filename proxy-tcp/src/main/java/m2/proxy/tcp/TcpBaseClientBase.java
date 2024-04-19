@@ -1,26 +1,27 @@
-package m2.proxy;
+package m2.proxy.tcp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import m2.proxy.tcp.handlers.ClientHandlerBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass.*;
+import proto.m2.MessageOuterClass.Message;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class NettyClient extends Netty {
-    private static final Logger log = LoggerFactory.getLogger(NettyClient.class);
+public abstract class TcpBaseClientBase extends TcpBase {
+    private static final Logger log = LoggerFactory.getLogger(TcpBaseClientBase.class);
 
     private final EventLoopGroup group;
 
-    private Handler handler;
-    public Handler getHandler() { return handler;}
+    private ClientHandlerBase clientHandler;
+    public ClientHandlerBase getHandler() { return clientHandler;}
 
-    public NettyClient(String clientId, String serverAddr, int ServerPort, String localAddress) {
+    public TcpBaseClientBase(String clientId, String serverAddr, int ServerPort, String localAddress) {
         super(
                 clientId==null?UUID.randomUUID().toString().substring(0,5):clientId,
                 serverAddr, ServerPort, localAddress, null
@@ -29,16 +30,12 @@ public class NettyClient extends Netty {
         setLocalPort(0);
     }
 
-    public NettyClient(String serverHost, int ServerPort, String bindAddress) {
-        this(null, serverHost, ServerPort, bindAddress);
-    }
-
     @Override
     public void onStart() {
         log.info("Netty client start on {}:{}, connect to host -> {}:{}",
                 getLocalAddress(), getLocalPort(), serverAddr,serverPort);
         getExecutor().execute(() -> {
-            final Netty server=this;
+            final TcpBase server=this;
             try {
                 Bootstrap bootstrap = new Bootstrap();
                 bootstrap.group(group)
@@ -46,18 +43,18 @@ public class NettyClient extends Netty {
                         .handler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {
-                                ch.pipeline().addFirst(new BigMessageDecoder(server));
+                                ch.pipeline().addFirst(new MessageDecoder(server));
                                 ch.pipeline().addLast(new SimpleChannelInboundHandler<Message>() {
                                     @Override
                                     protected void channelRead0(ChannelHandlerContext ctx, Message msg)  {
-                                        handler.prosessMessage(msg);
+                                        clientHandler.prosessMessage(msg);
                                     }
                                     @Override
                                     public void channelActive(ChannelHandlerContext ctx) {
-                                        handler = new Handler(server,ctx.channel().id(),ctx);
-                                        handler.sendPublicKey();
+                                        clientHandler = setClientHandler(ctx.channel().id().asShortText(),ctx);
+                                        clientHandler.onInit();
                                         ctx.executor().scheduleAtFixedRate(() ->
-                                                handler.sendMessage("Hello server: " + System.currentTimeMillis())
+                                                clientHandler.sendMessage("Hello server: " + System.currentTimeMillis())
                                                 , 0, 2, TimeUnit.SECONDS);
                                     }
 

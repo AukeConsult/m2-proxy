@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':netty-client-server')
+    implementation project(':proxy-tcp')
     implementation project(':proxy-core')
     implementation project(":lib-shared")
 }

@@ -19,37 +19,31 @@ public class M2Test {
                 .setPing(MessageOuterClass.Ping.newBuilder().build())
                 .build();
 
-        byte[] content = m.getMessageBytes().toByteArray();
+        byte[] content = m.getSubMessage().toByteArray();
         MessageOuterClass.Message m_in = MessageOuterClass.Message.parseFrom(content);
         assertEquals(m.getPing(),m_in.getPing());
 
     }
 
     @Test
-    void Http () throws InvalidProtocolBufferException {
+    void Request () throws InvalidProtocolBufferException {
 
-        MessageOuterClass.HttpInRequest r = MessageOuterClass.HttpInRequest
+        MessageOuterClass.Request r = MessageOuterClass.Request
                 .newBuilder()
                 .setRequestId(10)
                 .setSessionId(22)
-                .setVerb("GET")
-                .setHeader("Hello")
-                .setHeader("bodyasdasdasdasd")
                 .build();
 
         MessageOuterClass.Message m = MessageOuterClass.Message.newBuilder()
-                .setType(MessageOuterClass.MessageType.HTTP_REQUEST)
+                .setType(MessageOuterClass.MessageType.REQUEST)
                 .setSubMessage(r.toByteString())
                 .build();
 
         byte[] content = m.toByteArray();
 
         MessageOuterClass.Message m_in = MessageOuterClass.Message.parseFrom(content);
-        MessageOuterClass.HttpInRequest r2 = MessageOuterClass.HttpInRequest.parseFrom(m_in.getSubMessage().toByteArray());
-        assertEquals(r.getRequestId(),r2.getRequestId());
-        assertEquals(r.getVerb(),r2.getVerb());
-        assertEquals(r.getHeader(),r2.getHeader());
-        assertEquals(r.getBody(),r2.getBody());
+        MessageOuterClass.Request r2 = MessageOuterClass.Request.parseFrom(m_in.getSubMessage().toByteArray());
+        assertEquals(r.getRequestId(),r2.getRequestId());;
 
     }
 

@@ -108,6 +108,7 @@ public abstract class ProxyServerBase extends ServiceBaseExecutor {
 
         executor = new ThreadPoolExecutor(corePooSize,maximumPoolSize,keepAliveTime,TimeUnit.SECONDS,tasks);
         rnd.setSeed(System.currentTimeMillis());
+
     }
 
     @Override

@@ -1,4 +1,4 @@
-package m2.proxy;
+package m2.proxy.tcp;
 
 import javax.crypto.Cipher;
 import java.security.PrivateKey;

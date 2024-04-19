@@ -1,6 +1,8 @@
 package m2.proxy;
 
 import m2.proxy.executors.*;
+import m2.proxy.tcp.TcpBaseClient;
+import m2.proxy.tcp.TcpBaseServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,14 +17,14 @@ import java.util.Random;
 public class ServerIntegrationTest {
 
 
-    final NettyServer server;
+    final TcpBaseServer server;
     final Random rnd = new Random();
 
     public ServerIntegrationTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         KeyPair rsaKey = generator.generateKeyPair();
-        server = new NettyServer(4000, "", rsaKey);
+        server = new TcpBaseServer(4000, "", rsaKey);
     }
 
     @BeforeEach
@@ -38,9 +40,9 @@ public class ServerIntegrationTest {
     @Test
     void one_client() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
         client1.start();
-        Thread.sleep(1000*2);
+        Thread.sleep(1000*30);
         client1.stop();
 
     }
@@ -48,7 +50,7 @@ public class ServerIntegrationTest {
     @Test
     void one_client_big_message() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
         client1.start();
         Thread.sleep(1000);
 
@@ -56,7 +58,7 @@ public class ServerIntegrationTest {
         rnd.nextBytes(b);
         client1.getHandler().sendMessage(new String(b));
 
-        Thread.sleep(1000*10);
+        Thread.sleep(1000*30);
         client1.stop();
 
     }
@@ -65,9 +67,9 @@ public class ServerIntegrationTest {
     @Test
     void many_clients() throws InterruptedException {
 
-        NettyClient client1 = new NettyClient("localhost",4000, "");
-        NettyClient client2 = new NettyClient("localhost",4000, "");
-        NettyClient client3 = new NettyClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
+        TcpBaseClient client2 = new TcpBaseClient("localhost",4000, "");
+        TcpBaseClient client3 = new TcpBaseClient("localhost",4000, "");
 
         client1.start();
         client2.start();
@@ -80,7 +82,7 @@ public class ServerIntegrationTest {
 
     }
 
-    public class RandomClient extends NettyClient {
+    public static class RandomClient extends TcpBaseClient {
 
         public RandomClient(String host, int port) {
             super(host, port, "");
@@ -90,7 +92,7 @@ public class ServerIntegrationTest {
         protected void startServices() {
             super.startServices();
 
-            NettyClient server = this;
+            TcpBaseClient server = this;
             getExecutor().execute(() -> {
                 while(this.isRunning()) {
                     int wait = rnd.nextInt(200);
@@ -101,7 +103,7 @@ public class ServerIntegrationTest {
                     }
                     try {
                         Thread.sleep(wait);
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ignored) {
                     }
                 }
             });
@@ -113,7 +115,7 @@ public class ServerIntegrationTest {
 
         List<RandomClient> clients= new ArrayList<>();
         for(int i = 0;i<5;i++) {
-            RandomClient c = new RandomClient("localhost",4000);
+            RandomClient c = new RandomClient("localhost", 4000);
             clients.add(c);
             c.start();
         }

@@ -1,9 +1,10 @@
-package m2.proxy;
+package m2.proxy.tcp;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import m2.proxy.tcp.handlers.ClientHandlerBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import proto.m2.MessageOuterClass;
@@ -13,17 +14,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class NettyServer extends Netty {
+public abstract class TcpBaseServerBase extends TcpBase {
 
-    private static final Logger log = LoggerFactory.getLogger(NettyServer.class);
+    private static final Logger log = LoggerFactory.getLogger(TcpBaseServerBase.class);
 
-    private final Map<ChannelId, Handler> clients = new ConcurrentHashMap<>();
-    public Map<ChannelId, Handler> getClients() { return clients;}
+    private final Map<String, ClientHandlerBase> clients = new ConcurrentHashMap<>();
+    public Map<String, ClientHandlerBase> getClients() { return clients;}
 
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
 
-    public NettyServer(int serverPort, String localAddress, KeyPair rsaKey) {
+    public TcpBaseServerBase(int serverPort, String localAddress, KeyPair rsaKey) {
         super("SERVER","",serverPort,localAddress,rsaKey);
 
         bossGroup = new NioEventLoopGroup();
@@ -33,31 +34,30 @@ public class NettyServer extends Netty {
     }
 
     @Override
-    public void onStart() {
+    public final void onStart() {
 
         log.info("Starting netty server on -> {}:{} ", getLocalAddress(),getLocalPort());
         getExecutor().execute(() -> {
 
             try {
-                final Netty server=this;
+                final TcpBase server=this;
                 ServerBootstrap b = new ServerBootstrap();
                 b.group(bossGroup, workerGroup)
                         .channel(NioServerSocketChannel.class)
                         .childHandler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {
-                                ch.pipeline().addFirst(new BigMessageDecoder(server));
+                                ch.pipeline().addFirst(new MessageDecoder(server));
                                 ch.pipeline().addLast(new SimpleChannelInboundHandler<MessageOuterClass.Message>() {
                                     @Override
                                     protected void channelRead0(ChannelHandlerContext ctx, MessageOuterClass.Message msg) {
-                                        clients.get(ctx.channel().id()).prosessMessage(msg);
+                                        clients.get(ctx.channel().id().asShortText()).prosessMessage(msg);
                                     }
                                     @Override
                                     public void channelActive(ChannelHandlerContext ctx) {
-                                        clients.put(ctx.channel().id(),new Handler(server,ctx.channel().id(),ctx));
-                                        clients.get(ctx.channel().id()).sendPublicKey();
+                                        setClientHandler(ctx.channel().id().asShortText(),ctx);
                                         ctx.executor().scheduleAtFixedRate(() ->
-                                                clients.get(ctx.channel().id()).sendMessage("Hello client: " + System.currentTimeMillis()), 0, 2, TimeUnit.SECONDS);
+                                                clients.get(ctx.channel().id().asShortText()).sendMessage("Hello client: " + System.currentTimeMillis()), 0, 2, TimeUnit.SECONDS);
                                     }
                                 });
                             }
@@ -75,10 +75,10 @@ public class NettyServer extends Netty {
     }
 
     @Override
-    public void onStop() {
+    public final void onStop() {
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
-        getClients().values().forEach(Handler::printWork);
+        getClients().values().forEach(ClientHandlerBase::printWork);
         log.info("Netty server stopped");
     }
 
@@ -86,7 +86,7 @@ public class NettyServer extends Netty {
     final protected void execute() {
         while(isRunning()) {
             waitfor(10000);
-            getClients().values().forEach(Handler::printWork);
+            getClients().values().forEach(ClientHandlerBase::printWork);
         }
     }
 
