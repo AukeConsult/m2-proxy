@@ -1,5 +1,7 @@
 package m2.proxy;
 
+import m2.proxy.common.HttpException;
+import m2.proxy.common.ProxyStatus;
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
@@ -10,18 +12,16 @@ import java.util.Optional;
 
 import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
 
-public abstract class LocalSite {
+public abstract class LocalSite extends Forward {
 
     public static class ContentResult {
         public String contentType = "plain/text";
         public String body;
         public String status="200 OK";
     }
-    private final RawHttp http = new RawHttp();
-
 
     public LocalSite() {}
-    public Optional<RawHttpResponse<?>> forward (RawHttpRequest request) {
+    public Optional<RawHttpResponse<?>> forwardHttp (RawHttpRequest request) throws HttpException {
 
         final String path = request.getStartLine().getUri().getPath();
         Optional<ContentResult> result = onHandlePath(request.getMethod(), path, request.getBody().toString());
@@ -39,22 +39,9 @@ public abstract class LocalSite {
             return Optional.of(response);
 
         } else {
-
-            String hello = "Hello from Casa-IO";
-            String dateString = RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
-            RawHttpResponse<?> response = http.parseResponse("HTTP/1.1 200 OK\r\n" +
-                    "Content-Type: plain/text\r\n" +
-                    "Content-Length: " + hello.length() + "\r\n" +
-                    "Server: Casa-IO\r\n" +
-                    "Date: " + dateString + "\r\n" +
-                    "\r\n" +
-                    hello);
-
-            return Optional.of(response);
-
+            throw new HttpException(ProxyStatus.NOTFOUND,path);
         }
-        // create reply
     }
-    abstract Optional<ContentResult> onHandlePath(String verb, String path, String body);
+    abstract Optional<ContentResult> onHandlePath(String verb, String path, String body) throws HttpException;
 
 }

@@ -1,10 +1,11 @@
-package m2.proxy.tcp;
+package m2.proxy.tcp.handlers;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import proto.m2.MessageOuterClass;
+import m2.proxy.tcp.TcpBase;
+import m2.proxy.proto.MessageOuterClass.*;
 
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class MessageDecoder extends ByteToMessageDecoder {
                 }
                 byte[] buf = new byte[length];
                 in.readBytes(length).getBytes(0,buf);
-                MessageOuterClass.Message m = MessageOuterClass.Message.parseFrom(buf);
+                Message m = Message.parseFrom(buf);
                 out.add(m);
             }
         } catch (InvalidProtocolBufferException e) {

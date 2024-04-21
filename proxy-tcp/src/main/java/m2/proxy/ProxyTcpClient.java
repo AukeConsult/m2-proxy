@@ -1,12 +1,11 @@
 package m2.proxy;
 
 import com.google.protobuf.ByteString;
-import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.tcp.TcpBaseClientBase;
-import m2.proxy.tcp.handlers.ClientHandler;
+import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass;
+import m2.proxy.proto.MessageOuterClass.*;
 
 import java.util.Random;
 
@@ -58,23 +57,29 @@ public class ProxyTcpClient {
 
         proxyTcpClient = new TcpBaseClientBase(clientId, serverAddr, serverPort, localAddress) {
             @Override
-            public ClientHandler setClientHandler(String channelId, ChannelHandlerContext ctx) {
+            public ConnectionHandler setConnectionHandler() {
 
                 log.info("set client handler");
-                return new ClientHandler(this, channelId, ctx) {
+                return new ConnectionHandler() {
                     @Override
-                    public boolean isOpen() { return true;}
+                    protected void onMessageIn(Message m) {}
                     @Override
-                    public void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String destination, ByteString requestMessage) {
+                    protected void onMessageOut(Message m) {}
+                    @Override
+                    protected void onConnect(String ClientId, String remoteAddress) {}
+                    @Override
+                    protected void onDisconnect(String ClientId) {}
+                    @Override
+                    public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                         try {
-                            if(type== MessageOuterClass.RequestType.PLAIN) {
+                            if(type== RequestType.PLAIN) {
                                 reply(sessionId,requestId,type,requestMessage);
-                            } else if (type== MessageOuterClass.RequestType.HTTP ) {
+                            } else if (type == RequestType.HTTP ) {
                                 reply(sessionId,requestId,type,requestMessage);
                             } else {
                                 reply(sessionId,
                                         requestId,
-                                        MessageOuterClass.RequestType.NONE,
+                                        RequestType.NONE,
                                         null
                                 );
                             }

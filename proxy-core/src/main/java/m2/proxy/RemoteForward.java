@@ -1,12 +1,14 @@
 package m2.proxy;
 
 import com.google.protobuf.ByteString;
-import io.netty.channel.ChannelHandlerContext;
+import m2.proxy.common.ProxyStatus;
 import m2.proxy.tcp.TcpBaseServerBase;
-import m2.proxy.tcp.handlers.ClientHandler;
-import m2.proxy.tcp.handlers.ClientHandlerBase;
+import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.SessionHandler;
-import proto.m2.MessageOuterClass.*;
+import m2.proxy.common.TcpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import m2.proxy.proto.MessageOuterClass.*;
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
@@ -16,17 +18,18 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class RemoteForward extends TcpBaseServerBase {
+    private static final Logger log = LoggerFactory.getLogger(RemoteForward.class);
 
     private final RawHttp http = new RawHttp();
 
     public Map<String, RemoteAccess> access;
 
-    public RemoteForward(int serverPort, String localAddress, Map<String, RemoteAccess> access) {
-        super(serverPort, localAddress, null);
+    public RemoteForward(int tcpPort, Map<String, RemoteAccess> access) {
+        super(tcpPort, Network.localAddress(), null);
         this.access=access;
     }
 
-    public Optional<RawHttpResponse<?>> forward (RawHttpRequest request) {
+    public Optional<RawHttpResponse<?>> forwardTcp (RawHttpRequest request) throws TcpException {
 
         final String[] path = request.getStartLine().getUri().getPath().split("/");
 
@@ -37,7 +40,7 @@ public class RemoteForward extends TcpBaseServerBase {
 
                 if(getClients().containsKey(clientId) &&  getClients().get(clientId).isOpen()) {
 
-                    ClientHandlerBase client = getClients().get(clientId);
+                    ConnectionHandler client = getClients().get(clientId);
 
                     long sessionId = request.getSenderAddress().isPresent() ?
                             UUID.nameUUIDFromBytes(
@@ -52,24 +55,31 @@ public class RemoteForward extends TcpBaseServerBase {
                         },10000);
                     }
                     SessionHandler session = client.getSessions().get(sessionId);
-                    ByteString ret = session.sendRequest("",ByteString.copyFromUtf8(request.toString()), RequestType.HTTP,1000);
+
+                    ByteString ret = session.sendRequest("", ByteString.copyFromUtf8(request.toString()), RequestType.HTTP,1000);
                     if(!ret.isEmpty()) {
                         return Optional.of(http.parseResponse(ret.toStringUtf8()));
                     }
                 } else {
-                    // client not open
+                    throw new TcpException(ProxyStatus.NOTOPEN,clientId);
                 }
             }
         }
-        return Optional.of(null);
+        return Optional.empty();
 
     }
 
     @Override
-    public ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx) {
-        return new ClientHandler(this, id, ctx) {
+    public ConnectionHandler setConnectionHandler() {
+        return new ConnectionHandler() {
             @Override
-            public boolean isOpen() {return false;}
+            protected void onMessageIn(Message m) {}
+            @Override
+            protected void onMessageOut(Message m) {}
+            @Override
+            protected void onConnect(String ClientId, String remoteAddress) {}
+            @Override
+            protected void onDisconnect(String ClientId) {}
             @Override
             public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) {}
         };

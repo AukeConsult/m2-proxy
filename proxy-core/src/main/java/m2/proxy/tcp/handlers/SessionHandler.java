@@ -2,9 +2,11 @@ package m2.proxy.tcp.handlers;
 
 import com.google.protobuf.ByteString;
 import m2.proxy.tcp.TcpBase;
+import m2.proxy.common.TcpException;
+import m2.proxy.common.ProxyStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass.*;
+import m2.proxy.proto.MessageOuterClass.*;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,8 +21,8 @@ public abstract class SessionHandler {
     AtomicLong lastExecute = new AtomicLong();
     AtomicLong sessionTimeOut = new AtomicLong();
 
-    ClientHandlerBase handler;
-    public ClientHandlerBase getHandler() { return handler; }
+    ConnectionHandler handler;
+    public ConnectionHandler getHandler() { return handler; }
 
     AtomicReference<Reply> reply = new AtomicReference<>();
 
@@ -46,7 +48,7 @@ public abstract class SessionHandler {
         handler.write(m);
     }
 
-    public synchronized ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut)  {
+    public synchronized ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut) throws TcpException {
 
         if(getHandler().isOpen()) {
             try {
@@ -57,7 +59,7 @@ public abstract class SessionHandler {
                     lastExecute.set(System.currentTimeMillis());
                     this.timeOut.set(timeOut);
 
-                    ClientHandlerBase.WaitRequest req = new ClientHandlerBase.WaitRequest();
+                    ConnectionHandler.WaitRequest req = new ConnectionHandler.WaitRequest();
                     req.sessionHandler = this;
                     req.async = false;
                     req.request = Request.newBuilder()
@@ -78,29 +80,28 @@ public abstract class SessionHandler {
                     if (reply.get() != null) {
                         return reply.get().getReplyMessage();
                     } else {
-                        throw new InterruptedException("TIMEOUT");
+                        throw new TcpException(ProxyStatus.TIMEOUT,"timeout");
                     }
                 }
 
             } catch (InterruptedException e) {
-                return ByteString.EMPTY;
+                throw new TcpException(ProxyStatus.TIMEOUT,"");
             } finally {
                 //log.info("{} -> finish: {}", getSessionId(), message.toStringUtf8());
                 lastRequestId.set(0);
             }
 
         } else {
-            return ByteString.EMPTY;
+            throw new TcpException(ProxyStatus.NOTOPEN,"no open");
         }
-
     }
 
-    public synchronized long sendAsyncRequest(String destination, ByteString message, RequestType type)  {
+    public synchronized long sendAsyncRequest(String destination, ByteString message, RequestType type) throws TcpException {
 
         if(getHandler().isOpen()) {
             // encode message
 
-            ClientHandlerBase.WaitRequest req = new ClientHandlerBase.WaitRequest();
+            ConnectionHandler.WaitRequest req = new ConnectionHandler.WaitRequest();
             req.sessionHandler=this;
             req.async=true;
             req.request = Request.newBuilder()
@@ -118,12 +119,13 @@ public abstract class SessionHandler {
 
             return req.request.getRequestId();
 
+        } else {
+            throw new TcpException(ProxyStatus.NOTOPEN,"no open");
         }
-        return -1L;
 
     }
 
-    public void handleReply(ClientHandlerBase.WaitRequest req, Reply reply) {
+    public void handleReply(ConnectionHandler.WaitRequest req, Reply reply) {
 
         if(!req.async) {
             if(req.requestId == lastRequestId.get()) {

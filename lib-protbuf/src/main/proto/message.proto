@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto.m2;
+package m2.proxy.proto;
 
 enum MessageType {
   INIT = 0;
@@ -9,6 +9,7 @@ enum MessageType {
   REPLY = 3;
   MESSAGE = 4;
   PUBLIC_KEY = 5;
+  RAW_MESSAGE = 6;
 }
 
 enum PingStatus {

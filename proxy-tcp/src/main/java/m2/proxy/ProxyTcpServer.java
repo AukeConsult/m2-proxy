@@ -1,13 +1,12 @@
 package m2.proxy;
 
 import com.google.protobuf.ByteString;
-import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.tcp.TcpBaseServerBase;
-import m2.proxy.tcp.handlers.ClientHandler;
-import m2.proxy.tcp.handlers.ClientHandlerBase;
+import m2.proxy.tcp.handlers.ConnectionHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass;
+import m2.proxy.proto.MessageOuterClass;
 
 import static java.lang.Runtime.getRuntime;
 
@@ -38,13 +37,19 @@ public class ProxyTcpServer {
 
         proxyTcpServer = new TcpBaseServerBase(serverPort, localAddress, null) {
             @Override
-            public ClientHandlerBase setClientHandler(String channelId, ChannelHandlerContext ctx) {
-                getClients().put(channelId, new ClientHandler(this, channelId, ctx) {
+            public ConnectionHandler setConnectionHandler() {
+                return new ConnectionHandler() {
+                    @Override
+                    protected void onMessageIn(MessageOuterClass.Message m) {}
+                    @Override
+                    protected void onMessageOut(MessageOuterClass.Message m) {}
+                    @Override
+                    protected void onConnect(String ClientId, String remoteAddress) {}
+                    @Override
+                    protected void onDisconnect(String ClientId) {}
                     @Override
                     protected void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String address, ByteString request) {}
-                });
-                getClients().get(channelId).onInit();
-                return getClients().get(channelId);
+                };
             }
         };
         proxyTcpServer.start();

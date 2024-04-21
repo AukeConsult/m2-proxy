@@ -1,16 +1,14 @@
 package m2.proxy.tcp;
 
 import com.google.protobuf.ByteString;
-import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.executors.*;
-import m2.proxy.tcp.handlers.ClientHandler;
-import m2.proxy.tcp.handlers.ClientHandlerBase;
+import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.m2.MessageOuterClass;
+import m2.proxy.proto.MessageOuterClass.*;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -32,26 +30,31 @@ public class ServerIntegrationTest {
         }
 
         @Override
-        public ClientHandler setClientHandler(String channelId, ChannelHandlerContext ctx) {
+        public ConnectionHandler setConnectionHandler() {
 
             log.info("set client handler");
-            return new ClientHandler(this, channelId, ctx) {
+            return new ConnectionHandler() {
                 @Override
-                public void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String destination, ByteString requestMessage) {
+                protected void onMessageIn(Message m) {}
+                @Override
+                protected void onMessageOut(Message m) {}
+                @Override
+                protected void onConnect(String ClientId, String remoteAddress) {}
+                @Override
+                protected void onDisconnect(String ClientId) {}
+                @Override
+                public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
-                        if(type== MessageOuterClass.RequestType.PLAIN) {
-                            reply(sessionId,requestId,type,ByteString.copyFromUtf8("hello back PLAIN"));
-                        } else if (type== MessageOuterClass.RequestType.HTTP ) {
-                            reply(sessionId,requestId,type,ByteString.copyFromUtf8("hello back HTTP"));
+                        Thread.sleep(new Random().nextInt(2000));
+                        if(type == RequestType.PLAIN || type == RequestType.HTTP) {
+                            reply(sessionId,requestId,type,requestMessage);
                         } else {
                             reply(sessionId,
                                     requestId,
-                                    MessageOuterClass.RequestType.NONE,
+                                    RequestType.NONE,
                                     null
                             );
                         }
-                        Thread.sleep(new Random().nextInt(2000));
-
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
@@ -67,10 +70,24 @@ public class ServerIntegrationTest {
         KeyPair rsaKey = generator.generateKeyPair();
         server = new TcpBaseServerBase(4000, "", rsaKey) {
             @Override
-            public ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx) {
-                return null;
+            public ConnectionHandler setConnectionHandler() {
+                return new ConnectionHandler() {
+                    @Override
+                    protected void onMessageIn(Message m) {}
+                    @Override
+                    protected void onMessageOut(Message m) {}
+                    @Override
+                    protected void onConnect(String ClientId, String remoteAddress) {}
+                    @Override
+                    protected void onDisconnect(String ClientId) {}
+                    @Override
+                    protected void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
+
+                    }
+                };
             }
         };
+
     }
 
     @BeforeEach
@@ -79,14 +96,43 @@ public class ServerIntegrationTest {
     }
 
     @AfterEach
-    void end() {
+    void end() { server.stop(); }
+
+    @Test
+    void server_start_stop() throws InterruptedException {
+
+        Thread.sleep(1000*5);
         server.stop();
+        Thread.sleep(1000*10);
+        server.start();
+        Thread.sleep(1000*10);
+
+    }
+
+    @Test
+    void server_client_start_stop() throws InterruptedException {
+
+        TcpBaseClient client1 = new TcpBaseClient("leif",4000, "");
+        client1.start();
+        Thread.sleep(1000*5);
+        server.stop();
+        Thread.sleep(1000*15);
+        server.start();
+        Thread.sleep(1000*30);
+        client1.stop();
+        Thread.sleep(1000*20);
+        client1.start();
+        Thread.sleep(1000*30);
+        client1.stop();
+        Thread.sleep(1000*30);
+
+
     }
 
     @Test
     void one_client() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient("leif2",4000, "");
         client1.start();
         Thread.sleep(1000*30);
         client1.stop();
@@ -96,13 +142,13 @@ public class ServerIntegrationTest {
     @Test
     void one_client_big_message() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient(null,4000, "localhost");
+        TcpBaseClient client1 = new TcpBaseClient("leif2",4000, "");
         client1.start();
         Thread.sleep(1000);
 
         byte[] b = new byte[1000000];
         rnd.nextBytes(b);
-        client1.getHandler().sendMessage(new String(b));
+        client1.getClients().forEach((k,s) -> s.getHandler().sendRawMessage(b));
 
         Thread.sleep(1000*30);
         client1.stop();
@@ -113,9 +159,9 @@ public class ServerIntegrationTest {
     @Test
     void many_clients() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient(null,4000, "localhost");
-        TcpBaseClient client2 = new TcpBaseClient(null,4000, "localhost");
-        TcpBaseClient client3 = new TcpBaseClient(null,4000, "localhost");
+        TcpBaseClient client1 = new TcpBaseClient("leif1",4000, "localhost");
+        TcpBaseClient client2 = new TcpBaseClient("leif2",4000, "localhost");
+        TcpBaseClient client3 = new TcpBaseClient("leif3",4000, "localhost");
 
         client1.start();
         client2.start();
@@ -142,15 +188,19 @@ public class ServerIntegrationTest {
             getExecutor().execute(() -> {
                 while(this.isRunning()) {
                     int wait = rnd.nextInt(200);
-                    if(server.getHandler()!=null) {
-                        byte[] bytes = new byte[rnd.nextInt(200000)+10];
-                        rnd.nextBytes(bytes);
-                        server.getHandler().sendMessage(new String(bytes));
-                    }
-                    try {
-                        Thread.sleep(wait);
-                    } catch (InterruptedException ignored) {
-                    }
+                    server.getClients().forEach((k,s) -> {
+                        if(s.getHandler()!=null) {
+                            byte[] bytes = new byte[rnd.nextInt(2000000)+200000];
+                            rnd.nextBytes(bytes);
+                            s.getHandler().sendRawMessage(bytes);
+                        }
+                        try {
+                            Thread.sleep(wait);
+                        } catch (InterruptedException ignored) {
+                        }
+
+                    });
+
                 }
             });
         }

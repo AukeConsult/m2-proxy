@@ -1,8 +1,7 @@
 package m2.proxy.tcp;
 
-import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.executors.ServiceBaseExecutor;
-import m2.proxy.tcp.handlers.ClientHandlerBase;
+import m2.proxy.tcp.handlers.ConnectionHandler;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -19,8 +18,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected final String serverAddr;
     protected final int serverPort;
     protected final KeyPair rsaKey;
-    protected Map<String, ClientHandlerBase> activeClients = new ConcurrentHashMap<>();
-
+    protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
 
     private String localAddress;
     private int localPort;
@@ -31,7 +29,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public int getLocalPort() { return localPort; }
     public void setLocalPort(int localPort) { this.localPort = localPort;}
     public KeyPair getRsaKey() { return rsaKey;}
-    public Map<String, ClientHandlerBase> getActiveClients() { return activeClients; }
+    public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
     private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
     private final Executor taskPool;
@@ -52,7 +50,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         }
 
         this.clientId=clientId;
-        this.serverAddr = serverAddr;
+        this.serverAddr = serverAddr==null?"127.0.0.1":serverAddr;
         this.serverPort = serverPort;
         //this.localAddress = localAddress==null?Network.localAddress():localAddress;
         this.localAddress = localAddress==null?"127.0.0.1":localAddress;
@@ -60,10 +58,11 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         taskPool = new ThreadPoolExecutor(10,50,10,TimeUnit.SECONDS,tasks);
         rnd.setSeed(System.currentTimeMillis());
 
-
     }
 
-    public abstract ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx);
+    public abstract ConnectionHandler setConnectionHandler();
+    public abstract void connect(ConnectionHandler handler);
+    public abstract void disConnect(ConnectionHandler handler);
     abstract void onStart();
     abstract void onStop();
 

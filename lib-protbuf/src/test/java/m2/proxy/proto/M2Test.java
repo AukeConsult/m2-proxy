@@ -1,11 +1,10 @@
-package proto;
+package m2.proxy.proto;
 
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
 
 import org.junit.jupiter.api.Test;
-import proto.m2.MessageOuterClass;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
