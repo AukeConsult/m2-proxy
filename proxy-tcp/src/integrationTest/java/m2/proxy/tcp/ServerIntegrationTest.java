@@ -1,11 +1,16 @@
-package m2.proxy;
+package m2.proxy.tcp;
 
+import com.google.protobuf.ByteString;
+import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.executors.*;
-import m2.proxy.tcp.TcpBaseClient;
-import m2.proxy.tcp.TcpBaseServer;
+import m2.proxy.tcp.handlers.ClientHandler;
+import m2.proxy.tcp.handlers.ClientHandlerBase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import proto.m2.MessageOuterClass;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -16,15 +21,56 @@ import java.util.Random;
 
 public class ServerIntegrationTest {
 
-
-    final TcpBaseServer server;
+    final TcpBaseServerBase server;
     final Random rnd = new Random();
+
+    public static class TcpBaseClient extends TcpBaseClientBase {
+        private static final Logger log = LoggerFactory.getLogger(TcpBaseClient.class);
+
+        public TcpBaseClient(String clientId, int ServerPort, String localport) {
+            super(clientId, "127.0.0.1", ServerPort, localport);
+        }
+
+        @Override
+        public ClientHandler setClientHandler(String channelId, ChannelHandlerContext ctx) {
+
+            log.info("set client handler");
+            return new ClientHandler(this, channelId, ctx) {
+                @Override
+                public void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String destination, ByteString requestMessage) {
+                    try {
+                        if(type== MessageOuterClass.RequestType.PLAIN) {
+                            reply(sessionId,requestId,type,ByteString.copyFromUtf8("hello back PLAIN"));
+                        } else if (type== MessageOuterClass.RequestType.HTTP ) {
+                            reply(sessionId,requestId,type,ByteString.copyFromUtf8("hello back HTTP"));
+                        } else {
+                            reply(sessionId,
+                                    requestId,
+                                    MessageOuterClass.RequestType.NONE,
+                                    null
+                            );
+                        }
+                        Thread.sleep(new Random().nextInt(2000));
+
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            };
+        }
+
+    }
 
     public ServerIntegrationTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         KeyPair rsaKey = generator.generateKeyPair();
-        server = new TcpBaseServer(4000, "", rsaKey);
+        server = new TcpBaseServerBase(4000, "", rsaKey) {
+            @Override
+            public ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx) {
+                return null;
+            }
+        };
     }
 
     @BeforeEach
@@ -50,7 +96,7 @@ public class ServerIntegrationTest {
     @Test
     void one_client_big_message() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient(null,4000, "localhost");
         client1.start();
         Thread.sleep(1000);
 
@@ -67,9 +113,9 @@ public class ServerIntegrationTest {
     @Test
     void many_clients() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient("localhost",4000, "");
-        TcpBaseClient client2 = new TcpBaseClient("localhost",4000, "");
-        TcpBaseClient client3 = new TcpBaseClient("localhost",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient(null,4000, "localhost");
+        TcpBaseClient client2 = new TcpBaseClient(null,4000, "localhost");
+        TcpBaseClient client3 = new TcpBaseClient(null,4000, "localhost");
 
         client1.start();
         client2.start();
@@ -85,7 +131,7 @@ public class ServerIntegrationTest {
     public static class RandomClient extends TcpBaseClient {
 
         public RandomClient(String host, int port) {
-            super(host, port, "");
+            super(null, port, host);
         }
 
         @Override

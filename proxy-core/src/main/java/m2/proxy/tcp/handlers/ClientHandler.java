@@ -3,8 +3,8 @@ package m2.proxy.tcp.handlers;
 import com.google.protobuf.ByteString;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import m2.proxy.tcp.MessageDecoder;
 import m2.proxy.tcp.Encrypt;
+import m2.proxy.tcp.MessageDecoder;
 import m2.proxy.tcp.TcpBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +50,11 @@ public abstract class ClientHandler extends ClientHandlerBase {
         );
     }
 
+    @Override
+    public boolean isOpen() {
+        return ctx.channel().isOpen();
+    }
+
     public ClientHandler(TcpBase server, String channelId, ChannelHandlerContext ctx) {
         super(server);
 
@@ -58,9 +63,7 @@ public abstract class ClientHandler extends ClientHandlerBase {
         this.remoteAddress = ctx!=null?ctx.channel().remoteAddress().toString():null;
 
         assert ctx != null;
-        ctx.executor().scheduleAtFixedRate(() -> {
-            sendPing();
-        }, 0, 10, TimeUnit.SECONDS);
+        ctx.executor().scheduleAtFixedRate(() -> sendPing(), 0, 10, TimeUnit.SECONDS);
 
         log.info("active client ch: {}, addr: {}",
                 ctx.channel().id().asShortText(),
@@ -114,7 +117,7 @@ public abstract class ClientHandler extends ClientHandlerBase {
                 log.info("GOT KEY, ch: {}, KEYID: {}, addr: {}",
                         channelId,
                         remoteKeyId.get(),
-                        remoteAddress.toString()
+                        remoteAddress
                 );
                 sendPing();
 

@@ -4,7 +4,6 @@ package m2.proxy;
 import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import m2.proxy.access.EndpointPath;
 import m2.proxy.executors.ServiceBaseExecutor;
 import m2.proxy.access.AccessController;
 import m2.proxy.server.ProxyServerBase;

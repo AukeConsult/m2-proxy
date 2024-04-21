@@ -11,8 +11,6 @@ enum MessageType {
   PUBLIC_KEY = 5;
 }
 
-
-
 enum PingStatus {
   ONINIT = 0;
   HASINIT = 1;
@@ -61,6 +59,7 @@ message Request {
   int64 requestId = 2;
   RequestType type = 3;
   bytes requestMessage = 4;
+  string destination = 5;
 }
 
 message Reply {
@@ -69,6 +68,7 @@ message Reply {
   RequestType type = 3;
   ReplyStatus status = 4;
   bytes replyMessage = 5;
+  string replyAddress = 6;
 }
 
 message PublicRsaKey {
@@ -79,20 +79,4 @@ message PublicRsaKey {
 message AesKey {
   int32 id = 1;
   bytes key = 2;
-}
-
-enum HttpVerb {
-  GET = 0;
-  PUT = 1;
-}
-
-message HttpRequest {
-    HttpVerb verb=1;
-    bytes header=2;
-    bytes body=3;
-}
-
-message HttpReply {
-  bytes header=1;
-  bytes body=2;
 }

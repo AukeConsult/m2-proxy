@@ -16,8 +16,6 @@ plugins {
 
 }
 
-sourceCompatibility = '11'
-
 repositories {
     mavenCentral()
 }

@@ -1,9 +1,9 @@
 plugins {
-    id("common.micronaut-dependencies")
-    id("io.micronaut.library") version "$micronautVersion"
-    id("io.micronaut.aot") version "$micronautVersion"
+    id("common.java-netty")
 }
 
 dependencies {
+    implementation 'com.athaydes.rawhttp:rawhttp-core:2.6.0'
+    implementation project(':lib-protbuf')
     implementation project(":lib-shared")
 }

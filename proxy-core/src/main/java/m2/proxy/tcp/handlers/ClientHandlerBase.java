@@ -25,7 +25,6 @@ public abstract class ClientHandlerBase {
     public static class WaitRequest {
         boolean async;
         long requestId = TcpBase.rnd.nextLong(Long.MAX_VALUE);
-        long timeStamp = System.currentTimeMillis();
         SessionHandler sessionHandler;
         Request request;
     }
@@ -37,7 +36,11 @@ public abstract class ClientHandlerBase {
     public TcpBase getServer() {return server;}
 
     final Map<Long, WaitRequest> requestSessions = new ConcurrentHashMap<>();
+
     final Map<Long, SessionHandler> sessions = new ConcurrentHashMap<>();
+    public Map<Long, SessionHandler> getSessions() {
+        return sessions;
+    }
 
     protected String channelId="";
     protected String remoteAddress="";
@@ -70,9 +73,7 @@ public abstract class ClientHandlerBase {
         onWrite(m);
     }
 
-    public ClientHandlerBase(TcpBase server) {
-        this.server=server;
-    }
+    public ClientHandlerBase(TcpBase server) { this.server=server;}
 
     public void prosessMessage(Message m)  {
 
@@ -135,6 +136,7 @@ public abstract class ClientHandlerBase {
                         m.getRequest().getSessionId(),
                         m.getRequest().getRequestId(),
                         m.getRequest().getType(),
+                        m.getRequest().getDestination(),
                         m.getRequest().getRequestMessage()
                 );
 
@@ -176,11 +178,12 @@ public abstract class ClientHandlerBase {
 
     }
 
+
     public void printWork() {
 
-        log.info("{} -> ch: {}, addr: {} \n" +
-                        "OUT > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \n" +
-                        "IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \n"
+        log.info("{} -> ch: {}, addr: {} \r\n" +
+                        "OUT > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \r\n" +
+                        "IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \n\n"
                 ,
                 server.getClientId(),
                 channelId,
@@ -210,10 +213,11 @@ public abstract class ClientHandlerBase {
         };
     }
 
+    public abstract boolean isOpen();
     public abstract void onWrite(Message m);
     public abstract void onInit();
 
     public abstract void onProsessMessage(Message m);
-    protected abstract void onRequest(long sessionId, long requestId, RequestType type, ByteString request);
+    protected abstract void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request);
 
 }

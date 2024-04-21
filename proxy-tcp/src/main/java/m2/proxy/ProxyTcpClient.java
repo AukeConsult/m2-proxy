@@ -1,8 +1,14 @@
 package m2.proxy;
 
-import m2.proxy.tcp.TcpBaseClient;
+import com.google.protobuf.ByteString;
+import io.netty.channel.ChannelHandlerContext;
+import m2.proxy.tcp.TcpBaseClientBase;
+import m2.proxy.tcp.handlers.ClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import proto.m2.MessageOuterClass;
+
+import java.util.Random;
 
 import static java.lang.Runtime.getRuntime;
 
@@ -10,14 +16,14 @@ public class ProxyTcpClient {
     private static final Logger log = LoggerFactory.getLogger(ProxyTcpClient.class);
     static ProxyTcpClient app;
 
-    TcpBaseClient proxyTcpClient;
+    TcpBaseClientBase proxyTcpClient;
 
     void run(String[] args) {
 
         int serverPort=9001;
-        String serverAddr=null;
-        String localAddress=null;
-        String clientId=null;
+        String serverAddr = "127.0.0.1";
+        String localAddress = null;
+        String clientId = null;
 
         if(args.length>0) {
             int cnt = 0;
@@ -48,9 +54,40 @@ public class ProxyTcpClient {
         }
 
         //serverAddr = serverAddr==null?Network.localAddress():serverAddr;
-        serverAddr = "127.0.0.1";
 
-        proxyTcpClient = new TcpBaseClient(clientId,serverAddr,serverPort,localAddress);
+
+        proxyTcpClient = new TcpBaseClientBase(clientId, serverAddr, serverPort, localAddress) {
+            @Override
+            public ClientHandler setClientHandler(String channelId, ChannelHandlerContext ctx) {
+
+                log.info("set client handler");
+                return new ClientHandler(this, channelId, ctx) {
+                    @Override
+                    public boolean isOpen() { return true;}
+                    @Override
+                    public void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String destination, ByteString requestMessage) {
+                        try {
+                            if(type== MessageOuterClass.RequestType.PLAIN) {
+                                reply(sessionId,requestId,type,requestMessage);
+                            } else if (type== MessageOuterClass.RequestType.HTTP ) {
+                                reply(sessionId,requestId,type,requestMessage);
+                            } else {
+                                reply(sessionId,
+                                        requestId,
+                                        MessageOuterClass.RequestType.NONE,
+                                        null
+                                );
+                            }
+                            Thread.sleep(new Random().nextInt(2000));
+
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            }
+        };
+
         proxyTcpClient.start();
 
         getRuntime().addShutdownHook(new Thread(() -> proxyTcpClient.stop()));

@@ -4,7 +4,9 @@ import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.executors.ServiceBaseExecutor;
 import m2.proxy.tcp.handlers.ClientHandlerBase;
 
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -12,8 +14,6 @@ import java.util.concurrent.*;
 public abstract class TcpBase extends ServiceBaseExecutor {
 
     public static final Random rnd = new Random();
-
-
 
     protected final String clientId;
     protected final String serverAddr;
@@ -32,11 +32,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public void setLocalPort(int localPort) { this.localPort = localPort;}
     public KeyPair getRsaKey() { return rsaKey;}
     public Map<String, ClientHandlerBase> getActiveClients() { return activeClients; }
-
-    Executor sessionThreads = Executors.newCachedThreadPool();
-    public Executor getSessionThreads() {
-        return sessionThreads;
-    }
 
     private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
     private final Executor taskPool;

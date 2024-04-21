@@ -6,9 +6,6 @@ apply plugin: 'java'
 
 dependencies {
 
-    implementation 'com.google.protobuf:protobuf-java:4.26.1'
-    implementation 'com.google.protobuf:protobuf-java-util:4.26.1'
-
     implementation project(':proxy-core')
     implementation project(':lib-protbuf')
     implementation project(":lib-shared")
@@ -33,7 +30,7 @@ testing {
     }
 }
 
-task buildServer(type: Jar) {
+tasks.register('buildServer', Jar) {
     manifest {
         attributes 'Main-Class': 'm2.proxy.ProxyTcpServer'
     }
@@ -43,7 +40,7 @@ task buildServer(type: Jar) {
     with jar
 }
 
-task buildClient(type: Jar) {
+tasks.register('buildClient', Jar) {
     manifest {
         attributes 'Main-Class': 'm2.proxy.ProxyTcpClient'
     }
@@ -53,15 +50,15 @@ task buildClient(type: Jar) {
     with jar
 }
 
-task buildRUN() {
+tasks.register('buildRUN') {
     group "build"
     dependsOn(buildClient)
     dependsOn(buildServer)
     copy {
-        from 'build/libs/proxy-tcp-client-' + appVersion + appVersionExtension +'.jar'
+        from 'build/libs/proxy-tcp-client-' + appVersion + appVersionExtension + '.jar'
         into "run"
 
-        from 'build/libs/proxy-tcp-server-' + appVersion + appVersionExtension +'.jar'
+        from 'build/libs/proxy-tcp-server-' + appVersion + appVersionExtension + '.jar'
         into "run"
     }
 }

@@ -25,7 +25,7 @@ public abstract class TcpBaseServerBase extends TcpBase {
     private final EventLoopGroup workerGroup;
 
     public TcpBaseServerBase(int serverPort, String localAddress, KeyPair rsaKey) {
-        super("SERVER","",serverPort,localAddress,rsaKey);
+        super("SERVER",localAddress,serverPort,localAddress,rsaKey);
 
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();

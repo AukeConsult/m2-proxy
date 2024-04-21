@@ -33,7 +33,7 @@ public abstract class TcpBaseClientBase extends TcpBase {
     @Override
     public void onStart() {
         log.info("Netty client start on {}:{}, connect to host -> {}:{}",
-                getLocalAddress(), getLocalPort(), serverAddr,serverPort);
+                getLocalAddress(), getLocalPort(), serverAddr, serverPort);
         getExecutor().execute(() -> {
             final TcpBase server=this;
             try {
@@ -57,7 +57,6 @@ public abstract class TcpBaseClientBase extends TcpBase {
                                                 clientHandler.sendMessage("Hello server: " + System.currentTimeMillis())
                                                 , 0, 2, TimeUnit.SECONDS);
                                     }
-
                                 });
                             }
                         });

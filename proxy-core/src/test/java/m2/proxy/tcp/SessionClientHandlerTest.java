@@ -1,9 +1,7 @@
-package m2.proxy;
+package m2.proxy.tcp;
 
 import com.google.protobuf.ByteString;
 import io.netty.channel.ChannelHandlerContext;
-import m2.proxy.tcp.TcpBaseServerBase;
-import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ClientHandlerBase;
 import m2.proxy.tcp.handlers.SessionHandler;
 import org.junit.jupiter.api.Test;
@@ -25,14 +23,14 @@ public class SessionClientHandlerTest {
                 assertEquals("hello",reply.toStringUtf8());
                 log.info("{} -> {} -> reply async: {}",getSessionId(),requestId,reply.toStringUtf8());
             }
-            @Override
-            public void onReceive(long requestId, HttpReply reply) {}
         };
 
         TcpBaseServerBase server = new TcpBaseServerBase(0, null, null) {
             @Override
             public ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx) {
                 return new ClientHandlerBase(this) {
+                    @Override
+                    public boolean isOpen() { return true;}
                     @Override
                     public void onWrite(Message m) {
                         assertTrue(m.getType()==MessageType.REQUEST || m.getType()==MessageType.REPLY);
@@ -44,7 +42,7 @@ public class SessionClientHandlerTest {
                     @Override
                     public void onProsessMessage(Message m) {}
                     @Override
-                    public void onRequest(long sessionId, long requestId, RequestType type, ByteString request) {
+                    public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) {
                         assertEquals(session.getSessionId(),sessionId);
                         getServer().getTaskPool().execute(() -> {
                             try {
@@ -61,10 +59,10 @@ public class SessionClientHandlerTest {
         ClientHandlerBase handler = server.setClientHandler("leif",null);
         assertNotNull(handler);
         handler.openSession(session, 10000);
-        session.sendAsyncRequest(ByteString.copyFromUtf8("hello"),RequestType.PLAIN);
+        session.sendAsyncRequest("",ByteString.copyFromUtf8("hello"),RequestType.PLAIN);
         try {
             ByteString message = ByteString.copyFromUtf8("hello sync");
-            ByteString reply = session.sendRequest(message,RequestType.PLAIN,1000);
+            ByteString reply = session.sendRequest("",message,RequestType.PLAIN,1000);
             assertEquals(message.toStringUtf8(),reply.toStringUtf8());
         } catch (Exception e) {
             log.error("send fail {}",e.getMessage());
@@ -81,8 +79,6 @@ public class SessionClientHandlerTest {
             public void onReceive(long requestId, ByteString reply) {
                 log.info("{} -> {} -> reply: {}",getSessionId(),requestId,reply.toStringUtf8());
             }
-            @Override
-            public void onReceive(long requestId, HttpReply reply) {}
         };
 
         TcpBaseServerBase server = new TcpBaseServerBase(0, null, null) {
@@ -90,17 +86,18 @@ public class SessionClientHandlerTest {
             public ClientHandlerBase setClientHandler(String id, ChannelHandlerContext ctx) {
                 return new ClientHandlerBase(this) {
                     @Override
+                    public boolean isOpen() { return true;}
+                    @Override
                     public void onWrite(Message m) {
                         assertTrue(m.getType()==MessageType.REQUEST || m.getType()==MessageType.REPLY);
                         prosessMessage(m);
                     }
-
                     @Override
                     public void onInit() {}
                     @Override
                     public void onProsessMessage(Message m) {}
                     @Override
-                    public void onRequest(long sessionId, long requestId, RequestType type, ByteString request) {
+                    public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
                         assertEquals(session.getSessionId(),sessionId);
                         getServer().getTaskPool().execute(() -> {
                             try {
@@ -121,7 +118,7 @@ public class SessionClientHandlerTest {
             int cnt=0;
             while(cnt<10) {
                 ByteString message = ByteString.copyFromUtf8("ASYNC hello " + cnt + " " + session.getSessionId());
-                session.sendAsyncRequest(message,RequestType.PLAIN);
+                session.sendAsyncRequest("",message,RequestType.PLAIN);
                 try {
                     Thread.sleep(TcpBase.rnd.nextInt(2000));
                 } catch (InterruptedException ignored) {
@@ -135,7 +132,7 @@ public class SessionClientHandlerTest {
             while(cnt<10) {
                 ByteString message = ByteString.copyFromUtf8("sync hello " + cnt + " " + session.getSessionId());
                 try {
-                    ByteString ret = session.sendRequest(message,RequestType.PLAIN,5000);
+                    ByteString ret = session.sendRequest("",message,RequestType.PLAIN,5000);
                     assertEquals(message.toStringUtf8(),ret.toStringUtf8());
                     log.info("{} -> reply: {}", session.getSessionId(), ret.toStringUtf8());
                 } catch (Exception e) {
@@ -145,20 +142,17 @@ public class SessionClientHandlerTest {
             }
         });
 
-        server.getTaskPool().execute(new Runnable() {
-            @Override
-            public void run() {
-                int cnt=0;
-                while(cnt<10) {
-                    ByteString message = ByteString.copyFromUtf8("timeout hello " + cnt + " " + session.getSessionId());
-                    try {
-                        ByteString ret = session.sendRequest(message,RequestType.PLAIN,1);
-                        fail();
-                    } catch (Exception e) {
-                        // log.info("Message: {}, fail {}",message,e.getMessage());
-                    }
-                    cnt++;
+        server.getTaskPool().execute(() -> {
+            int cnt=0;
+            while(cnt<10) {
+                ByteString message = ByteString.copyFromUtf8("timeout hello " + cnt + " " + session.getSessionId());
+                try {
+                    session.sendRequest("",message,RequestType.PLAIN,1);
+                    fail();
+                } catch (Exception e) {
+                    // log.info("Message: {}, fail {}",message,e.getMessage());
                 }
+                cnt++;
             }
         });
         Thread.sleep(30000);
