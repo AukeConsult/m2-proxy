@@ -63,7 +63,7 @@ public abstract class ClientHandler extends ClientHandlerBase {
         this.remoteAddress = ctx!=null?ctx.channel().remoteAddress().toString():null;
 
         assert ctx != null;
-        ctx.executor().scheduleAtFixedRate(() -> sendPing(), 0, 10, TimeUnit.SECONDS);
+        ctx.executor().scheduleAtFixedRate(this::sendPing, 0, 10, TimeUnit.SECONDS);
 
         log.info("active client ch: {}, addr: {}",
                 ctx.channel().id().asShortText(),

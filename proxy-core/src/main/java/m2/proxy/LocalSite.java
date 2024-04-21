@@ -17,7 +17,7 @@ public abstract class LocalSite {
         public String body;
         public String status="200 OK";
     }
-    private RawHttp http = new RawHttp();
+    private final RawHttp http = new RawHttp();
 
 
     public LocalSite() {}

@@ -7,7 +7,6 @@ import io.micronaut.core.annotation.NonNull;
 import io.micronaut.runtime.Micronaut;
 import io.micronaut.runtime.server.event.ServerStartupEvent;
 import jakarta.inject.Inject;
-import m2.proxy.access.AccessController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +25,8 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     @Inject
     ProxyMain proxyMain;
 
-    @Inject
-    TcpServerMain tcpServerMain;
+//    @Inject
+//    TcpServerMain tcpServerMain;
 
     @Inject
     protected Environment environment;
@@ -50,14 +49,14 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
         try {
             accessController.start();
             //proxyMain.start();
-            tcpServerMain.start();
+            //tcpServerMain.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         getRuntime().addShutdownHook(new Thread(() -> {
             //proxyMain.stop();
-            tcpServerMain.stop();
+            //tcpServerMain.stop();
             accessController.stop();
         }));
 
