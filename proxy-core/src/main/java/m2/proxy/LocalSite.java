@@ -2,7 +2,6 @@ package m2.proxy;
 
 import m2.proxy.common.HttpException;
 import m2.proxy.common.ProxyStatus;
-import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
 

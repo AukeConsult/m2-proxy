@@ -48,7 +48,7 @@ public abstract class TcpBaseClientBase extends TcpBase {
                 getExecutor().execute(clientThread);
                 getClients().put(key,clientThread);
 
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
 
         });
@@ -69,7 +69,7 @@ public abstract class TcpBaseClientBase extends TcpBase {
         private final String serverAddr;
         private final int serverPort;
 
-        private AtomicReference<ConnectionHandler> connectionHandler = new AtomicReference<>();
+        private final AtomicReference<ConnectionHandler> connectionHandler = new AtomicReference<>();
 
         public ConnectionHandler getHandler() {
             if(connectionHandler.get()==null) {

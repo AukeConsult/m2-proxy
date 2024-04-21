@@ -42,7 +42,7 @@ public class M2Test {
 
         MessageOuterClass.Message m_in = MessageOuterClass.Message.parseFrom(content);
         MessageOuterClass.Request r2 = MessageOuterClass.Request.parseFrom(m_in.getSubMessage().toByteArray());
-        assertEquals(r.getRequestId(),r2.getRequestId());;
+        assertEquals(r.getRequestId(),r2.getRequestId());
 
     }
 

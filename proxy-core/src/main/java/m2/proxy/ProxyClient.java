@@ -53,14 +53,13 @@ public class ProxyClient extends TcpBaseClientBase {
                             ret = directForward.forwardHttp(request);
                         }
                         Thread.sleep(TcpBase.rnd.nextInt(10)+1);
-                        if(ret.isPresent()) {
+                        if(!ret.isPresent()) {
                             ByteString reply = ByteString.copyFromUtf8(ret.get().toString());
                             log.info("Reply -> session: {}, id: {}, type: {}",sessionId,requestId,type);
                             reply(sessionId,requestId,type,reply);
                         } else {
                             ByteString reply = ByteString.copyFromUtf8(directForward.makeErrorReply("not found" + request.getUri()).toString());
                             reply(sessionId,requestId,type,reply);
-
                         }
                     } catch (HttpException | InterruptedException e) {
                         log.warn("Error request: {}",e.getMessage());

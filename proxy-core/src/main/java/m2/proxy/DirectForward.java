@@ -2,20 +2,15 @@ package m2.proxy;
 
 import m2.proxy.common.HttpException;
 import m2.proxy.common.ProxyStatus;
-import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpHeaders;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
 import rawhttp.core.client.TcpRawHttpClient;
 
 import java.io.IOException;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
 
 public class DirectForward extends Forward {
 

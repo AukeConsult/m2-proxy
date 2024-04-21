@@ -10,6 +10,6 @@ public class HttpException extends Throwable {
     }
     @Override
     public String getMessage() {
-        return status.toString() + ":" + super.getMessage();
+        return getStatus().toString() + ":" + super.getMessage();
     }
 }

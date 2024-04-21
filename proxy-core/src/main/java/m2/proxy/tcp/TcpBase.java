@@ -31,7 +31,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public KeyPair getRsaKey() { return rsaKey;}
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
-    private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
     private final Executor taskPool;
     public Executor getTaskPool() { return taskPool; }
 
@@ -55,6 +54,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         //this.localAddress = localAddress==null?Network.localAddress():localAddress;
         this.localAddress = localAddress==null?"127.0.0.1":localAddress;
 
+        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
         taskPool = new ThreadPoolExecutor(10,50,10,TimeUnit.SECONDS,tasks);
         rnd.setSeed(System.currentTimeMillis());
 

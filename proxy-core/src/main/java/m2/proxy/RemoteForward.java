@@ -32,8 +32,9 @@ public class RemoteForward extends TcpBaseServerBase {
     public Optional<RawHttpResponse<?>> forwardTcp (RawHttpRequest request) throws TcpException {
 
         final String[] path = request.getStartLine().getUri().getPath().split("/");
-
         if(path.length>0) {
+
+            log.info("forward path: {]",path);
 
             String clientId=path[0];
             if(access.containsKey(clientId)) {

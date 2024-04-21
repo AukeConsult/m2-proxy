@@ -66,26 +66,26 @@ public abstract class ConnectionHandler {
 
 
     private ChannelHandlerContext ctx;
-    private AtomicReference<String> channelId=new AtomicReference<>();
-    private AtomicReference<String> remoteAddress=new AtomicReference<>();
+    private final AtomicReference<String> channelId=new AtomicReference<>();
+    private final AtomicReference<String> remoteAddress=new AtomicReference<>();
 
     public ChannelHandlerContext getCtx() { return ctx; }
     public String getChannelId() { return channelId.get(); }
     public String getRemoteAddress() { return remoteAddress.get(); }
 
-    AtomicReference<String> remoteLocalAddress = new AtomicReference<>();
-    AtomicInteger remoteLocalPort = new AtomicInteger();
-    AtomicReference<String> remoteClientId = new AtomicReference<>();
+    private final AtomicReference<String> remoteLocalAddress = new AtomicReference<>();
+    private final AtomicInteger remoteLocalPort = new AtomicInteger();
+    private final AtomicReference<String> remoteClientId = new AtomicReference<>();
 
-    AtomicInteger remoteKeyId = new AtomicInteger();
-    AtomicReference<PublicKey> remotePublicKey = new AtomicReference<>();
-    AtomicReference<byte[]> remoteAESkey = new AtomicReference<>();
-    AtomicLong lastClientAlive= new AtomicLong();
+    private final AtomicInteger remoteKeyId = new AtomicInteger();
+    private final AtomicReference<PublicKey> remotePublicKey = new AtomicReference<>();
+    private final AtomicReference<byte[]> remoteAESkey = new AtomicReference<>();
+    private final AtomicLong lastClientAlive= new AtomicLong();
 
-    AtomicReference<PingStatus> myStatus = new AtomicReference<>(PingStatus.ONINIT);
-    AtomicReference<PingStatus> remoteStatus = new AtomicReference<>(PingStatus.ONINIT);
+    private final AtomicReference<PingStatus> myStatus = new AtomicReference<>(PingStatus.ONINIT);
+    private final AtomicReference<PingStatus> remoteStatus = new AtomicReference<>(PingStatus.ONINIT);
 
-    AtomicBoolean hasRemoteKey = new AtomicBoolean();
+    private final AtomicBoolean hasRemoteKey = new AtomicBoolean();
 
     private ClientWorker workerClient;
     public ClientWorker getWorkerClient() { return workerClient;}
