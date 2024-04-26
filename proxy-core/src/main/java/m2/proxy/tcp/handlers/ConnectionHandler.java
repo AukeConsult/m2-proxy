@@ -43,8 +43,6 @@ public abstract class ConnectionHandler {
         public AtomicInteger bytes = new AtomicInteger();
     }
 
-
-
     public static class WaitRequest {
         boolean async;
         long requestId = TcpBase.rnd.nextLong(Long.MAX_VALUE);
