@@ -1,14 +1,15 @@
 package m2.proxy.tcp;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.MessageDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass.*;
 
 import java.security.KeyPair;
 import java.util.Map;

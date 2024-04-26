@@ -2,13 +2,14 @@ package m2.proxy;
 
 import com.google.protobuf.ByteString;
 import m2.proxy.common.ProxyStatus;
+import m2.proxy.common.TcpException;
+import m2.proxy.proto.MessageOuterClass.Message;
+import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.TcpBaseServerBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.SessionHandler;
-import m2.proxy.common.TcpException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass.*;
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;

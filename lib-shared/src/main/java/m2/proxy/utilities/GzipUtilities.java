@@ -1,9 +1,7 @@
 package m2.proxy.utilities;
 
-
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

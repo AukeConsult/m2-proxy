@@ -1,12 +1,11 @@
 package m2.proxy;
 
 import com.google.protobuf.ByteString;
+import m2.proxy.proto.MessageOuterClass;
 import m2.proxy.tcp.TcpBaseServerBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass;
 
 import static java.lang.Runtime.getRuntime;
 

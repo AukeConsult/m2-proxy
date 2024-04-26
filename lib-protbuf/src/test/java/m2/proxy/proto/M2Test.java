@@ -1,9 +1,6 @@
 package m2.proxy.proto;
 
-
 import com.google.protobuf.InvalidProtocolBufferException;
-
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

@@ -17,7 +17,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SessionConnectionHandlerTest {
     private static final Logger log = LoggerFactory.getLogger(SessionConnectionHandlerTest.class);

@@ -4,8 +4,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.tcp.TcpBase;
-import m2.proxy.proto.MessageOuterClass.*;
 
 import java.util.List;
 

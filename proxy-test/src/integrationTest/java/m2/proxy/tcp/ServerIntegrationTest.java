@@ -1,14 +1,15 @@
 package m2.proxy.tcp;
 
 import com.google.protobuf.ByteString;
-import m2.proxy.executors.*;
+import m2.proxy.executors.ServiceBaseExecutor;
+import m2.proxy.proto.MessageOuterClass.Message;
+import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass.*;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

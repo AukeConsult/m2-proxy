@@ -1,12 +1,12 @@
 package m2.proxy.tcp.handlers;
 
 import com.google.protobuf.ByteString;
-import m2.proxy.tcp.TcpBase;
-import m2.proxy.common.TcpException;
 import m2.proxy.common.ProxyStatus;
+import m2.proxy.common.TcpException;
+import m2.proxy.proto.MessageOuterClass.*;
+import m2.proxy.tcp.TcpBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass.*;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;

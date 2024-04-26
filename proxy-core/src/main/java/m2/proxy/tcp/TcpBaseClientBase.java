@@ -5,11 +5,11 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.MessageDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import m2.proxy.proto.MessageOuterClass.Message;
 
 import java.util.Map;
 import java.util.UUID;
@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+@SuppressWarnings("ALL")
 public abstract class TcpBaseClientBase extends TcpBase {
     private static final Logger log = LoggerFactory.getLogger(TcpBaseClientBase.class);
     private static final long RESTART_WAIT = 2000;
@@ -181,9 +182,7 @@ public abstract class TcpBaseClientBase extends TcpBase {
     final protected void execute() {
         while(isRunning()) {
             waitfor(10000);
-            getClients().values().forEach(s -> {
-                s.getHandler().printWork();
-            });
+            getClients().values().forEach(s -> s.getHandler().printWork());
         }
     }
 }

@@ -5,10 +5,11 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import m2.proxy.common.ProxyStatus;
 import m2.proxy.common.TcpException;
+import m2.proxy.proto.MessageOuterClass.*;
 import m2.proxy.tcp.Encrypt;
 import m2.proxy.tcp.TcpBase;
-
-import m2.proxy.proto.MessageOuterClass.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -20,9 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class ConnectionHandler {
     private static final Logger log = LoggerFactory.getLogger(ConnectionHandler.class);
@@ -506,9 +504,12 @@ public abstract class ConnectionHandler {
 
     public void printWork() {
 
-        log.info("{} -> ch: {}, addr: {} \r\n" +
-                        "OUT > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \r\n" +
-                        "IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \n\n"
+        log.info("""
+                        {} -> ch: {}, addr: {} \r
+                        OUT > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \r
+                        IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {}\s
+
+                        """
                 ,
                 server.getClientId(),
                 channelId,
