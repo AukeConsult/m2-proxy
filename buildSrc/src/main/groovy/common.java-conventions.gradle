@@ -7,6 +7,8 @@ version = appVersion + appVersionExtension
 
 dependencies {
 
+    implementation 'com.google.protobuf:protobuf-java:4.26.1'
+    implementation 'com.google.protobuf:protobuf-java-util:4.26.1'
 
     implementation 'org.slf4j:slf4j-api:1.7.32'
     implementation 'org.yaml:snakeyaml:2.2'
