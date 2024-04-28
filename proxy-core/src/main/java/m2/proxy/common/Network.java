@@ -1,4 +1,4 @@
-package m2.proxy;
+package m2.proxy.common;
 
 import java.net.DatagramSocket;
 import java.net.InetAddress;

@@ -1,4 +1,4 @@
-package m2.proxy;
+package m2.proxy.common;
 
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
@@ -17,7 +17,7 @@ public class Forward {
         return http.parseRequest(request);
     }
 
-    protected RawHttpResponse<?> makeErrorReply(String message) {
+    public RawHttpResponse<?> makeErrorReply(String message) {
         return http.parseResponse("HTTP/1.1 404 NOT OPEN\r\n" +
                 "Content-Type: plain/text\r\n" +
                 "Content-Length: " + message.length() + "\r\n" +

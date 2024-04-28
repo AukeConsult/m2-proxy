@@ -1,16 +1,13 @@
 package m2.proxy;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
-import io.micronaut.context.env.Environment;
 import io.micronaut.context.event.ApplicationEventListener;
-import io.micronaut.core.annotation.NonNull;
 import io.micronaut.runtime.Micronaut;
 import io.micronaut.runtime.server.event.ServerStartupEvent;
 import jakarta.inject.Inject;
+import m2.proxy.admin.AccessController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Optional;
 
 import static java.lang.Runtime.getRuntime;
 
@@ -23,13 +20,7 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     public int port;
 
     @Inject
-    ProxyMain proxyMain;
-
-//    @Inject
-//    TcpServerMain tcpServerMain;
-
-    @Inject
-    protected Environment environment;
+    Server server;
 
     @Inject
     private AccessController accessController;
@@ -41,22 +32,16 @@ public class Application implements ApplicationEventListener<ServerStartupEvent>
     @Override
     public void onApplicationEvent(ServerStartupEvent event) {
 
-        @NonNull Optional<Integer> par_port = environment.getProperty("micronaut.server.port", Integer.class);
-        par_port.ifPresent(integer -> this.port = integer);
-
         log.info("{} -> Start server: http://localhost:{}",name,port);
-
         try {
             accessController.start();
             //proxyMain.start();
-            //tcpServerMain.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         getRuntime().addShutdownHook(new Thread(() -> {
             //proxyMain.stop();
-            //tcpServerMain.stop();
             accessController.stop();
         }));
 

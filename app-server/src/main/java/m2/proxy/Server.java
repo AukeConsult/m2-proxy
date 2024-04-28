@@ -4,6 +4,8 @@ package m2.proxy;
 import io.micronaut.context.annotation.ConfigurationProperties;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import m2.proxy.admin.AccessController;
+import m2.proxy.common.EndpointPath;
 import m2.proxy.executors.ServiceBaseExecutor;
 import m2.proxy.types.TransportProtocol;
 import m2.proxy.types.TypeServer;
@@ -14,8 +16,8 @@ import java.util.*;
 
 @Singleton
 @ConfigurationProperties("proxy-server")
-public class ProxyMain extends ServiceBaseExecutor {
-    private static final Logger log = LoggerFactory.getLogger(ProxyMain.class);
+public class Server extends ServiceBaseExecutor {
+    private static final Logger log = LoggerFactory.getLogger(Server.class);
 
     public String mainHost;
 

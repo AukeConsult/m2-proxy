@@ -20,45 +20,46 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SessionConnectionHandlerTest {
-    private static final Logger log = LoggerFactory.getLogger(SessionConnectionHandlerTest.class);
+    private static final Logger log = LoggerFactory.getLogger( SessionConnectionHandlerTest.class );
 
     final TcpBaseServerBase server;
 
     public static class TcpBaseClient extends TcpBaseClientBase {
-        private static final Logger log = LoggerFactory.getLogger(ServerIntegrationTest.TcpBaseClient.class);
+        private static final Logger log = LoggerFactory.getLogger( ServerIntegrationTest.TcpBaseClient.class );
 
         public TcpBaseClient(String clientId, int ServerPort, String localport) {
-            super(clientId, "127.0.0.1", ServerPort, localport);
+            super( clientId, "127.0.0.1", ServerPort, localport );
         }
 
         @Override
         public ConnectionHandler setConnectionHandler() {
 
-            log.info("set client handler");
+            log.info( "set client handler" );
             return new ConnectionHandler() {
                 @Override
-                protected void onMessageIn(MessageOuterClass.Message m) {}
+                protected void onMessageIn(MessageOuterClass.Message m) { }
                 @Override
-                protected void onMessageOut(MessageOuterClass.Message m) {}
+                protected void onMessageOut(MessageOuterClass.Message m) { }
                 @Override
-                protected void onConnect(String ClientId, String remoteAddress) {}
+                protected void onConnect(String ClientId, String remoteAddress) { }
                 @Override
-                protected void onDisconnect(String ClientId) {}
+                protected void onDisconnect(String ClientId) { }
                 @Override
                 public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
-                        Thread.sleep(new Random().nextInt(2000));
-                        if(type == RequestType.PLAIN || type == RequestType.HTTP) {
-                            reply(sessionId,requestId,type,requestMessage);
+                        Thread.sleep( new Random().nextInt( 2000 ) );
+                        if (type == RequestType.PLAIN || type == RequestType.HTTP) {
+                            reply( sessionId, requestId, type, requestMessage );
                         } else {
-                            reply(sessionId,
+                            reply(
+                                    sessionId,
                                     requestId,
                                     RequestType.NONE,
                                     null
-                            );
+                                 );
                         }
                     } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                        throw new RuntimeException( e );
                     }
                 }
             };
@@ -67,35 +68,35 @@ public class SessionConnectionHandlerTest {
     }
 
     public SessionConnectionHandlerTest() throws NoSuchAlgorithmException {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048);
+        KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
+        generator.initialize( 2048 );
         KeyPair rsaKey = generator.generateKeyPair();
-        log.info("init server");
-        server = new TcpBaseServerBase(4000, null, rsaKey) {
+        log.info( "init server" );
+        server = new TcpBaseServerBase( 4000, null, rsaKey ) {
             final Logger logger = log;
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
                     @Override
-                    protected void onMessageIn(MessageOuterClass.Message m) {}
+                    protected void onMessageIn(MessageOuterClass.Message m) { }
                     @Override
-                    protected void onMessageOut(MessageOuterClass.Message m) {}
+                    protected void onMessageOut(MessageOuterClass.Message m) { }
                     @Override
                     protected void onConnect(String ClientId, String remoteAddress) {
-                        logger.info("connect handler: {}, {}",clientId,remoteAddress);
+                        logger.info( "connect handler: {}, {}", clientId, remoteAddress );
                     }
                     @Override
-                    protected void onDisconnect(String ClientId) {}
+                    protected void onDisconnect(String ClientId) { }
                     @Override
                     public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
-                        logger.info("request: {}, {}",sessionId,requestId);
-                        getServer().getTaskPool().execute(() -> {
+                        logger.info( "request: {}, {}", sessionId, requestId );
+                        getServer().getTaskPool().execute( () -> {
                             try {
-                                Thread.sleep(TcpBase.rnd.nextInt(500)+100);
+                                Thread.sleep( TcpBase.rnd.nextInt( 500 ) + 100 );
                             } catch (InterruptedException ignored) {
                             }
-                            reply(sessionId,requestId,type,request);
-                        });
+                            reply( sessionId, requestId, type, request );
+                        } );
                     }
                 };
             }
@@ -115,41 +116,41 @@ public class SessionConnectionHandlerTest {
 
     @Test
     void test_start() throws InterruptedException {
-        TcpBaseClient client1 = new TcpBaseClient("leif",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient( "leif", 4000, "" );
         client1.start();
-        Thread.sleep(1000*30);
+        Thread.sleep( 1000 * 30 );
         client1.stop();
     }
 
     @Test
     void check_request() throws InterruptedException {
 
-        TcpBaseClient client1 = new TcpBaseClient("leif",4000, "");
+        TcpBaseClient client1 = new TcpBaseClient( "leif", 4000, "" );
         client1.start();
         SessionHandler session = new SessionHandler() {
             @Override
             public void onReceive(long requestId, ByteString reply) {
-                log.info("{} -> {} -> reply: {}",getSessionId(),requestId,reply.toStringUtf8());
+                log.info( "{} -> {} -> reply: {}", getSessionId(), requestId, reply.toStringUtf8() );
             }
         };
 
-        client1.getClients().forEach((k,s) -> {
+        client1.getClients().forEach( (k, s) -> {
 
             try {
-                s.getHandler().openSession(session, 10000);
-                session.sendAsyncRequest("",ByteString.copyFromUtf8("hello"),RequestType.PLAIN);
-                ByteString message = ByteString.copyFromUtf8("hello sync");
-                ByteString reply = session.sendRequest("",message,RequestType.PLAIN,1000);
-                assertEquals(message.toStringUtf8(),reply.toStringUtf8());
+                s.getHandler().openSession( session, 10000 );
+                session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
+                ByteString message = ByteString.copyFromUtf8( "hello sync" );
+                ByteString reply = session.sendRequest( "", message, RequestType.PLAIN, 1000 );
+                assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
             } catch (TcpException | Exception e) {
-                log.error("Send fail: {}",e.getMessage());
+                log.error( "Send fail: {}", e.getMessage() );
             }
 
 
-        });
+        } );
 
-        Thread.sleep(10000);
-        Thread.sleep(1000*30);
+        Thread.sleep( 10000 );
+        Thread.sleep( 1000 * 30 );
         client1.stop();
 
     }

@@ -6,4 +6,6 @@ dependencies {
     implementation 'com.athaydes.rawhttp:rawhttp-core:2.6.0'
     implementation project(':lib-protbuf')
     implementation project(":lib-shared")
+    testImplementation 'com.sparkjava:spark-core:2.9.1'
+
 }
