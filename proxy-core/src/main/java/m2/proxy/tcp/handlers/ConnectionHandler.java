@@ -15,6 +15,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -62,18 +63,16 @@ public abstract class ConnectionHandler {
         return sessions;
     }
 
-
     private ChannelHandlerContext ctx;
     private final AtomicReference<String> channelId=new AtomicReference<>();
     private final AtomicReference<String> remoteAddress=new AtomicReference<>();
 
-    public ChannelHandlerContext getCtx() { return ctx; }
-    public String getChannelId() { return channelId.get(); }
-    public String getRemoteAddress() { return remoteAddress.get(); }
+
+
 
     private final AtomicReference<String> remoteLocalAddress = new AtomicReference<>();
     private final AtomicInteger remoteLocalPort = new AtomicInteger();
-    private final AtomicReference<String> remoteClientId = new AtomicReference<>();
+    private final AtomicReference<String> clientId = new AtomicReference<>();
 
     private final AtomicInteger remoteKeyId = new AtomicInteger();
     private final AtomicReference<PublicKey> remotePublicKey = new AtomicReference<>();
@@ -89,6 +88,14 @@ public abstract class ConnectionHandler {
     public ClientWorker getWorkerClient() { return workerClient;}
     public void setWorkerClient(ClientWorker workerClient) { this.workerClient = workerClient;}
 
+    public ChannelHandlerContext getCtx() { return ctx; }
+    public AtomicReference<String> getClientId() { return clientId; }
+    public String getChannelId() { return channelId.get(); }
+    public String getRemoteAddress() { return remoteAddress.get(); }
+
+    public AtomicReference<String> getRemoteLocalAddress() { return remoteLocalAddress; }
+    public AtomicInteger getRemoteLocalPort() { return remoteLocalPort; }
+
     public void close() {
         if(ctx!=null) {
             ctx.executor().shutdownNow();
@@ -96,7 +103,7 @@ public abstract class ConnectionHandler {
         }
     }
 
-    private AtomicBoolean doPing = new AtomicBoolean();
+    private final AtomicBoolean doPing = new AtomicBoolean();
     public void startPing(int timePeriod) {
         if(!doPing.getAndSet(true)) {
             ctx.executor().scheduleAtFixedRate(() ->
@@ -112,7 +119,7 @@ public abstract class ConnectionHandler {
         while(!this.isOpen() && time<10000) {
             try {
                 Thread.sleep(500);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
             time+=100;
         }
@@ -158,7 +165,6 @@ public abstract class ConnectionHandler {
                     ctx.channel().id().asShortText(),
                     ctx.channel().remoteAddress().toString()
             );
-
             server.disConnect(this);
         }
     }
@@ -173,7 +179,7 @@ public abstract class ConnectionHandler {
 
         log.info("{} -> Server init ch: {}, addr: {}",
                 server.getClientId(),
-                ctx.channel().id().asShortText(),
+                Objects.requireNonNull( ctx ).channel().id().asShortText(),
                 ctx.channel().remoteAddress().toString()
         );
 
@@ -237,7 +243,7 @@ public abstract class ConnectionHandler {
 
         log.info("{} -> Client init ch: {}, addr: {}",
                 server.getClientId(),
-                ctx.channel().id().asShortText(),
+                Objects.requireNonNull( ctx ).channel().id().asShortText(),
                 ctx.channel().remoteAddress().toString()
         );
 
@@ -326,11 +332,11 @@ public abstract class ConnectionHandler {
                 inWork.bytes.addAndGet(m.getSerializedSize());
 
                 myStatus.set(PingStatus.HASINIT);
-                remoteClientId.set(m.getInit().getClientId());
+                clientId.set(m.getInit().getClientId());
                 remoteLocalAddress.set(m.getInit().getLocalAddr());
                 remoteLocalPort.set(m.getInit().getLocalPort());
 
-                getServer().getActiveClients().put(remoteClientId.get(),this);
+                getServer().getActiveClients().put( clientId.get(),this);
 
                 log.info("{} -> INIT, ch: {}, remoteLocalAddr {}:{}, remoteAddr: {}",
                         getServer().getClientId(),
@@ -359,7 +365,7 @@ public abstract class ConnectionHandler {
                             remoteAddress
                     );
                     myStatus.set(PingStatus.HASKEY);
-                    onConnect(remoteClientId.get(),remoteAddress.get());
+                    onConnect( clientId.get(),remoteAddress.get());
 
                 }
                 sendPing();
@@ -388,7 +394,7 @@ public abstract class ConnectionHandler {
                             remoteAddress
                     );
                     myStatus.set(PingStatus.HASKEY);
-                    onConnect(remoteClientId.get(),remoteAddress.get());
+                    onConnect( clientId.get(),remoteAddress.get());
                     sendPing();
                 }
 

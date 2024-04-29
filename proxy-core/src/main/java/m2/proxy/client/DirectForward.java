@@ -4,6 +4,7 @@ import m2.proxy.common.Forward;
 import m2.proxy.common.HttpException;
 import m2.proxy.common.HttpHelper;
 import m2.proxy.common.ProxyStatus;
+import m2.proxy.server.ProxyServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.*;
@@ -14,15 +15,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DirectForward extends Forward {
+public class DirectForward implements Forward {
     private static final Logger log = LoggerFactory.getLogger( DirectForward.class );
 
     private final TcpRawHttpClient tcpRawHttpClient = new TcpRawHttpClient();
     private final HttpHelper httpHelper = new HttpHelper();
-    public final Map<String, DirectSite> sites = new ConcurrentHashMap();
-    public Map<String, DirectSite> getSites() {
-        return sites;
-    }
+    public final Map<String, DirectSite> sites = new ConcurrentHashMap<>();
+    public Map<String, DirectSite> getSites() { return sites; }
 
     public DirectForward() { }
 
@@ -34,7 +33,7 @@ public class DirectForward extends Forward {
                 log.info("Direct Forward {}",requestOut.get().getStartLine().getUri().toString());
                 try {
                     RawHttpResponse<?> response = tcpRawHttpClient.send(
-                            http.parseRequest( requestOut.get().eagerly().toString() )
+                            httpHelper.parseRequest( requestOut.get().eagerly().toString() )
                     );
                     return Optional.of( response.eagerly() );
                 } catch (IOException e) {
@@ -45,4 +44,13 @@ public class DirectForward extends Forward {
         return Optional.empty();
     }
 
+    private ProxyServer server;
+    @Override
+    public ProxyServer getServer() {
+        return server;
+    }
+    @Override
+    public void setServer(ProxyServer server) {
+        this.server=server;
+    }
 }

@@ -31,6 +31,10 @@
     <logger name="io.micronaut.runtime.Micronaut" level="DEBUG" additivity="false"/>
     <!--    Remove netty logging-->
     <logger name="io.netty" level="ERROR" additivity="false"/>
+    <logger name="org.eclipse" level="ERROR" additivity="false"/>
+    <logger name="spark.embeddedserver" level="ERROR" additivity="false"/>
+
+
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

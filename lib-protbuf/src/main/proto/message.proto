@@ -36,6 +36,18 @@ message Message {
   Reply reply = 8;
 }
 
+message Logon {
+  string remoteAddress = 1;
+  string accessPath = 2;
+  string clientId = 3;
+  string userId = 4;
+  string clientHost = 5;
+  string accessToken = 6;
+  string agent = 7;
+  bool okLogon = 8;
+  string reDirect = 9;
+}
+
 message Init {
   string clientId = 1;
   string localAddr = 2;
@@ -47,6 +59,7 @@ enum RequestType {
   PLAIN = 1;
   HTTP = 2;
   FTP = 3;
+  LOGON = 4;
 }
 
 enum ReplyStatus {

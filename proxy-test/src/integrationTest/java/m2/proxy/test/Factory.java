@@ -1,9 +1,11 @@
 package m2.proxy.test;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import m2.proxy.client.DirectForward;
 import m2.proxy.client.DirectSite;
-import m2.proxy.client.LocalSite;
-import m2.proxy.common.HttpException;
+import m2.proxy.client.LocalForward;
+import m2.proxy.common.ContentResult;
 import m2.proxy.server.ProxyServer;
 import m2.proxy.server.RemoteAccess;
 import m2.proxy.server.RemoteForward;
@@ -11,14 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.EagerHttpResponse;
 import rawhttp.core.RawHttp;
-import rawhttp.core.RawHttpRequest;
 import rawhttp.core.client.TcpRawHttpClient;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 
-import spark.Spark;
 
 public class Factory {
 
@@ -31,16 +31,42 @@ public class Factory {
         remoteForward.getAccess().put( "test1", new RemoteAccess( "test1", "client1" ) );
         remoteForward.getAccess().put( "test2", new RemoteAccess( "test2", "client2" ) );
 
-        DirectSite spark = new DirectSite("/spark", "localhost:9999");
-        directForward.sites.put( spark.getPath(),spark );
+        DirectSite spark = new DirectSite( "/spark", "localhost:9999" );
+        directForward.sites.put( spark.getPath(), spark );
 
-        LocalSite localSite = new LocalSite() {
+        LocalForward localForward = new LocalForward() {
+
             @Override
-            protected Optional<ContentResult> onHandlePath(String verb, String path, String body) throws HttpException {
-                if(verb.equals( "GET" )) {
-                   if(path.equals( "/local" )) {
-                       return Optional.of(  new ContentResult("hello"));
-                   }
+            protected Optional<ContentResult> onHandlePath(
+                    String verb,
+                    String path,
+                    Map<String, String> headers,
+                    String contentType,
+                    String body
+            ) {
+                if (verb.equals( "GET" )) {
+                    switch (path) {
+                        case "/local/hello" -> {
+                            log.info( "local hello: {}", body );
+                            return Optional.of( new ContentResult( body ) );
+                        }
+                        case "/local/json" -> {
+                            if (contentType.equals( "application/json" )) {
+                                JsonObject jsonBody = JsonParser.parseString( body )
+                                        .getAsJsonObject();
+                                return Optional.of( new ContentResult( jsonBody ) );
+                            } else if (contentType.equals( "text/plain" )) {
+                                JsonObject json = new JsonObject();
+                                json.addProperty( "data", body );
+                                log.info( "local: {}", body );
+                                return Optional.of( new ContentResult( json ) );
+                            }
+                        }
+                        case "/local" -> {
+                            log.info( "local: {}", body );
+                            return Optional.of( new ContentResult( "local" ) );
+                        }
+                    }
                 }
                 return Optional.empty();
             }
@@ -50,47 +76,26 @@ public class Factory {
                 serverPort,
                 directForward,
                 remoteForward,
-                localSite
+                localForward
         );
     }
 
-    public static void startSpark(int port) throws Exception {
-        Spark.port(port);
-        Spark.get("/hello", "text/plain", (req, res) -> {
-            log.info(req.headers().toString());
-            log.info(req.contentType());
-            log.info(req.body());
-            return "Hello";
-        });
-
-        Spark.post("/hello", "application/json", (req, res) -> {
-            System.out.println(req.body());
-            return "Hello";
-        });
-
-        Spark.post("/echo", "text/plain", (req, res) -> req.body());
-        Spark.put("/echo", "text/plain", (req, res) -> req.body());
-        RawHttp.waitForPortToBeTaken( port, Duration.ofSeconds( 2 ) );
-    }
-
-    public static void stopSpark() {
-        Spark.stop();
-    }
-
-    static int getRest(int port, String path) {
+    static Optional<EagerHttpResponse<?>> getRest(int port, String path) {
         try (TcpRawHttpClient client = new TcpRawHttpClient()) {
-            RawHttpRequest request = new RawHttp().parseRequest( String.format( "GET localhost:%d%s HTTP/1.1", port, path ) );
-            EagerHttpResponse<?> rawResponse = client.send(request).eagerly();
-           return rawResponse.getStatusCode();
+            log.info("get send: {}",path);
+            EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( String.format( "GET localhost:%d%s HTTP/1.1", port, path ) ) ).eagerly();
+            log.info("return: {}",rawResponse.getStartLine().getReason());
+            return Optional.of(rawResponse);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Request: {}, IOException", path, e.getMessage());
+            return Optional.empty();
         }
     }
 
-    static int getRestText(int port, String path, String body) {
+    static Optional<EagerHttpResponse<?>> getRest(int port, String path, String body) {
         try (TcpRawHttpClient client = new TcpRawHttpClient()) {
             String req = String.format( "GET localhost:%d%s HTTP/1.1\r\nUser-Agent: RawHTTP", port, path );
-            if(body!=null) {
+            if (body != null) {
                 req = req + "\r\n"
                         + "Content-Length: " + body.length() + "\r\n"
                         + "Content-Type: text/plain\r\n"
@@ -99,10 +104,57 @@ public class Factory {
                         + body;
 
             }
-            EagerHttpResponse<?> rawResponse = client.send(new RawHttp().parseRequest( req )).eagerly();
-            return rawResponse.getStatusCode();
+            log.info("get send: {}, body: {}",path,body);
+            EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
+            log.info("return: {}",rawResponse.getStartLine().getReason());
+            return Optional.of(rawResponse);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Request: {}, IOException", path, e.getMessage());
+            return Optional.empty();
+        }
+
+    }
+
+    static Optional<EagerHttpResponse<?>> getRest(int port, String path, JsonObject body) {
+        try (TcpRawHttpClient client = new TcpRawHttpClient()) {
+            String req = String.format( "GET localhost:%d%s HTTP/1.1\r\nUser-Agent: RawHTTP", port, path );
+            if (body != null) {
+                req = req + "\r\n"
+                        + "Content-Length: " + body.toString().length() + "\r\n"
+                        + "Content-Type: application/json\r\n"
+                        + "Accept: application/json\r\n"
+                        + "\r\n"
+                        + body;
+
+            }
+            log.info("get send: {}, body: {}",path,body);
+            EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
+            return Optional.of(rawResponse);
+        } catch (IOException e) {
+            log.error("Request: {}, IOException", path, e.getMessage());
+            return Optional.empty();
         }
     }
+
+    static Optional<EagerHttpResponse<?>> putRest(int port, String path, String body) {
+        try (TcpRawHttpClient client = new TcpRawHttpClient()) {
+            String req = String.format( "PUT localhost:%d%s HTTP/1.1\r\nUser-Agent: RawHTTP", port, path );
+            if (body != null) {
+                req = req + "\r\n"
+                        + "Content-Length: " + body.length() + "\r\n"
+                        + "Content-Type: text/plain\r\n"
+                        + "Accept: text/plain\r\n"
+                        + "\r\n"
+                        + body;
+
+            }
+            log.info("put send: {}, body: {}",path,body);
+            EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
+            return Optional.of(rawResponse);
+        } catch (IOException e) {
+            log.error("Request: {}, IOException", path, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
 }

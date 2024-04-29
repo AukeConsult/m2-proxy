@@ -3,6 +3,7 @@ package m2.proxy.executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -36,6 +37,19 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
         }
     }
 
+    public void start(Duration wait)  {
+        long start = System.currentTimeMillis();
+        new Thread( () -> start() ).start();
+
+        while (!isRunning() && System.currentTimeMillis() - start < wait.toMillis()) {
+            try {
+                Thread.sleep( 100 );
+            } catch (InterruptedException ignored) {
+            }
+        }
+
+    }
+
     @Override
     public final void start() {
         if(!running.getAndSet(true)) {
@@ -56,7 +70,6 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
                         } catch (Exception e) {
                             log.error("Error execute: {}",e.getMessage());
                             stopped.set(true);
-                            e.printStackTrace();
                         }
                         running.set(false);
                     });

@@ -7,14 +7,48 @@ import rawhttp.core.body.BodyReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.function.Function;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
 
 public class HttpHelper {
 
     private final RawHttp rawHttp = new RawHttp();
+
+    public RawHttpRequest parseRequest(String request) {
+        return rawHttp.parseRequest(request);
+    }
+
+    public Optional<RawHttpResponse<?>> response(ContentResult resultOut) {
+        RawHttpResponse<?> response = rawHttp.parseResponse(
+                "HTTP/1.1 " +
+                        resultOut.getStatus() + "\r\n" +
+                        "Content-Type: " + resultOut.getContentType() + "\r\n" +
+                        "Content-Length: " + resultOut.length() + "\r\n" +
+                        "Server: Casa-IO\r\n" +
+                        "Date: " + RFC_1123_DATE_TIME.format( ZonedDateTime.now( ZoneOffset.UTC ) ) + "\r\n" +
+                        "\r\n" +
+                        resultOut.getBody() );
+        return Optional.of( response );
+    }
+
+    public String errReply(int statusCode, ProxyStatus status, String message) {
+        return "HTTP/1.1 " +  statusCode + " " + status.toString() +"\r\n" +
+                "Content-Type: plain/text\r\n" +
+                "Content-Length: " + message.length() + "\r\n" +
+                "Server: Casa-IO\r\n" +
+                "Date: " + RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)) + "\r\n" +
+                "\r\n"+
+                message;
+    }
+
+    public Optional<RawHttpResponse<?>> errResponse(ProxyStatus status, String message) {
+        return Optional.of(rawHttp.parseResponse(errReply(404, status, message)));
+    }
 
     public RawHttpRequest updateRequest(String removePath, String destination, String hostAddress, RawHttpRequest request) {
 
@@ -67,12 +101,12 @@ public class HttpHelper {
         String hostAddress = "";
         try {
             hostAddress = request.getSenderAddress().orElse( InetAddress.getLocalHost() ).getHostAddress();
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException ignored) {
         }
         return hostAddress;
     }
 
-    public static Function<BodyReader, String> decodeBody() {
+    public Function<BodyReader, String> decodeBody() {
         return b -> {
             try {
                 return b.decodeBodyToString(UTF_8);
@@ -81,5 +115,6 @@ public class HttpHelper {
             }
         };
     }
+
 
 }

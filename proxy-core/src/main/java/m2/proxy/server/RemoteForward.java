@@ -1,10 +1,7 @@
 package m2.proxy.server;
 
 import com.google.protobuf.ByteString;
-import m2.proxy.common.HttpHelper;
-import m2.proxy.common.Network;
-import m2.proxy.common.ProxyStatus;
-import m2.proxy.common.TcpException;
+import m2.proxy.common.*;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.TcpBaseServerBase;
@@ -21,7 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RemoteForward extends TcpBaseServerBase {
+public class RemoteForward extends TcpBaseServerBase implements Forward {
     private static final Logger log = LoggerFactory.getLogger(RemoteForward.class);
 
     private final RawHttp http = new RawHttp();
@@ -98,5 +95,14 @@ public class RemoteForward extends TcpBaseServerBase {
             public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) {
             }
         };
+    }
+    private ProxyServer server;
+    @Override
+    public ProxyServer getServer() {
+        return server;
+    }
+    @Override
+    public void setServer(ProxyServer server) {
+        this.server=server;
     }
 }
