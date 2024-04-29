@@ -92,8 +92,7 @@ public class ProxyServer extends ServiceBaseExecutor {
                 } catch (HttpException e) {
                     metrics.transError.incrementAndGet();
                     log.error( "Request: {}, HttpException: {}", request.getUri().getPath(), e.getMessage() );
-                    Optional<RawHttpResponse<?>> err = httpHelper.errResponse( e.getStatus(), e.getMessage() );
-                    return err;
+                    return httpHelper.errResponse( e.getStatus(), e.getMessage() );
                 } catch (TcpException e) {
                     metrics.transError.incrementAndGet();
                     log.error( "Request: {}, TcpException: {}", request.getUri().getPath(), e.getMessage() );

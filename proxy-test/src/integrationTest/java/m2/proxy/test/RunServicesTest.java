@@ -17,7 +17,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class RunServicesTest {
-    private static final Logger log = LoggerFactory.getLogger( RunServices.class );
+    private static final Logger log = LoggerFactory.getLogger( RunServicesTest.class );
     private final HttpHelper httpHelper = new HttpHelper();
 
     public static void sparkStart(int port) throws Exception {

@@ -64,7 +64,7 @@ public class ProxyClient extends TcpBaseClientBase {
                                 reply( sessionId, requestId, type, reply );
                             } else {
                                 ByteString reply = ByteString.copyFromUtf8(
-                                        httpHelper.errReply( 404, ProxyStatus.NOTFOUND, request.getUri().getPath() ).toString() );
+                                        httpHelper.errReply( 404, ProxyStatus.NOTFOUND, request.getUri().getPath() ) );
                                 reply( sessionId, requestId, type, reply );
                             }
                         } else if (type == RequestType.LOGON) {

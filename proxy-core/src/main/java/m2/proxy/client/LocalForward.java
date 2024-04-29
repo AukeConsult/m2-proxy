@@ -19,16 +19,16 @@ public abstract class LocalForward implements Forward {
         try {
 
             String body = "";
-            if(request.getBody().isPresent()) {
-                body = request.getBody().map( httpHelper.decodeBody() ).orElse("");
+            if (request.getBody().isPresent()) {
+                body = request.getBody().map( httpHelper.decodeBody() ).orElse( "" );
             }
             final String path = request.getStartLine().getUri().getPath();
-            Map<String,String> headers = new HashMap<>();
-            request.getHeaders().forEach( (key, value) -> headers.put( key,value ));
+            Map<String, String> headers = new HashMap<>();
+            request.getHeaders().forEach( (key, value) -> headers.put( key, value ) );
             String contentType = headers.getOrDefault( "Content-Type", "text/plain" );
             Optional<ContentResult> result = onHandlePath( request.getMethod(), path, headers, contentType, body );
             if (result.isPresent()) {
-                return httpHelper.response(result.get());
+                return httpHelper.response( result.get() );
             } else {
                 return Optional.empty();
             }
@@ -43,8 +43,9 @@ public abstract class LocalForward implements Forward {
     }
     @Override
     public final void setServer(ProxyServer server) {
-        this.server=server;
+        this.server = server;
     }
 
-    protected abstract Optional<ContentResult> onHandlePath(String verb, String path, Map<String,String> headers, String contentType, String body) throws HttpException;
+    protected abstract Optional<ContentResult> onHandlePath(String verb, String path, Map<String, String> headers, String contentType, String body)
+            throws HttpException;
 }

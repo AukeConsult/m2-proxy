@@ -20,22 +20,20 @@ public class ServerSite {
 
     public Optional<ContentResult> getFrontPage() {
 
-        String page="<!DOCTYPE html>" +
-                "<html><body>" +
-                "<h1>Casa-IO</h1>\n" +
-                "<h2>Proxy-server</h>\n" +
-                "<p>Hello folks</p>\n" +
-                "<p>Server has #ACTIVE clients</p>\n" +
-                "<table>" +
-                "  <tr>" +
-                "    <th>ClientId</th>" +
-                "    <th>Address</th>" +
-                "    <th>Local Address</th>" +
-                "    <th>Local port</th>" +
-                "  </tr>" +
-                " #CLIENTLIST" +
-                "</table>" +
-                "</body></html>";
+        String page= """
+                <!DOCTYPE html><html><body><h1>Casa-IO</h1>
+                <h2>Proxy-server</h>
+                <p>Hello folks</p>
+                <p>Server has #ACTIVE clients</p>
+                <table>  
+                <tr>    
+                <th>ClientId</th>    
+                <th>Address</th>    
+                <th>Local Address</th>    
+                <th>Local port</th>  
+                </tr> 
+                #CLIENTLIST</table></body></html>
+                """;
 
         StringBuilder list = new StringBuilder();
         list.append( "<tr>" );
