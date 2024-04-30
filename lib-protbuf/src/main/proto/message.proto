@@ -10,6 +10,7 @@ enum MessageType {
   MESSAGE = 4;
   PUBLIC_KEY = 5;
   RAW_MESSAGE = 6;
+  DISCONNECT = 7;
 }
 
 enum PingStatus {
@@ -36,16 +37,30 @@ message Message {
   Reply reply = 8;
 }
 
+message Http {
+  string remoteAddress = 1;
+  string accessPath = 2;
+  string path = 3;
+  string clientHost = 4;
+  string accessToken = 5;
+  string agent = 6;
+  bytes request = 8;
+}
+
+message HttpReply {
+  bool okLogon = 1;
+  bytes reply = 8;
+}
+
 message Logon {
   string remoteAddress = 1;
   string accessPath = 2;
   string clientId = 3;
   string userId = 4;
-  string clientHost = 5;
+  string passWord = 5;
   string accessToken = 6;
   string agent = 7;
   bool okLogon = 8;
-  string reDirect = 9;
 }
 
 message Init {

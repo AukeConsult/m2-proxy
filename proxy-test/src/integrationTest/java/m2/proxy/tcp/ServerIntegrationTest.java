@@ -16,6 +16,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 public class ServerIntegrationTest {
@@ -30,21 +31,22 @@ public class ServerIntegrationTest {
             super( clientId, "127.0.0.1", ServerPort, localport );
         }
 
+        @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
+            return true;
+        }
+        @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+            return Optional.of(getClientId()+"Key");
+        }
         @Override
         public ConnectionHandler setConnectionHandler() {
 
             log.info( "set client handler" );
             return new ConnectionHandler() {
-                @Override
-                protected void onMessageIn(Message m) { }
-                @Override
-                protected void onMessageOut(Message m) { }
-                @Override
-                protected void onConnect(String ClientId, String remoteAddress) { }
-                @Override
-                protected void onDisconnect(String ClientId) { }
-                @Override
-                public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
+                @Override protected void onMessageIn(Message m) { }
+                @Override protected void onMessageOut(Message m) { }
+                @Override protected void onConnect(String ClientId, String remoteAddress) { }
+                @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
+                @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
                         Thread.sleep( new Random().nextInt( 2000 ) );
                         if (type == RequestType.PLAIN || type == RequestType.HTTP) {
@@ -74,18 +76,11 @@ public class ServerIntegrationTest {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
-                    @Override
-                    protected void onMessageIn(Message m) { }
-                    @Override
-                    protected void onMessageOut(Message m) { }
-                    @Override
-                    protected void onConnect(String ClientId, String remoteAddress) { }
-                    @Override
-                    protected void onDisconnect(String ClientId) { }
-                    @Override
-                    protected void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
-
-                    }
+                    @Override protected void onMessageIn(Message m) { }
+                    @Override protected void onMessageOut(Message m) { }
+                    @Override protected void onConnect(String ClientId, String remoteAddress) { }
+                    @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
+                    @Override protected void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) { }
                 };
             }
         };

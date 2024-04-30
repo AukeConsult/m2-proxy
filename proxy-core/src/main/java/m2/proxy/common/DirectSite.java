@@ -1,4 +1,4 @@
-package m2.proxy.client;
+package m2.proxy.common;
 
 public class DirectSite {
     private final String path;

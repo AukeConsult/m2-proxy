@@ -45,7 +45,7 @@ public class ProxyTcpServer {
                     @Override
                     protected void onConnect(String ClientId, String remoteAddress) { }
                     @Override
-                    protected void onDisconnect(String ClientId) { }
+                    protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override
                     protected void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String address, ByteString request) { }
                 };

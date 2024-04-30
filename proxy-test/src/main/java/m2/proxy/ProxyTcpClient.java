@@ -8,6 +8,7 @@ import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.Random;
 
 import static java.lang.Runtime.getRuntime;
@@ -57,8 +58,13 @@ public class ProxyTcpClient {
 
 
         proxyTcpClient = new TcpBaseClientBase( clientId, serverAddr, serverPort, localAddress ) {
-            @Override
-            public ConnectionHandler setConnectionHandler() {
+            @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
+                return true;
+            }
+            @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+                return Optional.of(clientId+"key");
+            }
+            @Override public ConnectionHandler setConnectionHandler() {
 
                 log.info( "set client handler" );
                 return new ConnectionHandler() {
@@ -69,7 +75,7 @@ public class ProxyTcpClient {
                     @Override
                     protected void onConnect(String ClientId, String remoteAddress) { }
                     @Override
-                    protected void onDisconnect(String ClientId) { }
+                    protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override
                     public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                         try {

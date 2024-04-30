@@ -2,9 +2,9 @@ package m2.proxy.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import m2.proxy.client.DirectForward;
-import m2.proxy.client.DirectSite;
-import m2.proxy.client.LocalForward;
+import m2.proxy.common.DirectForward;
+import m2.proxy.common.DirectSite;
+import m2.proxy.common.LocalForward;
 import m2.proxy.common.ContentResult;
 import m2.proxy.server.ProxyServer;
 import m2.proxy.server.RemoteAccess;

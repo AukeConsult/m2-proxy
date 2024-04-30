@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,21 +32,23 @@ public class SessionConnectionHandlerTest {
             super( clientId, "127.0.0.1", ServerPort, localport );
         }
 
+        @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
+            return true;
+        }
+        @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+            return Optional.of(getClientId()+"Key");
+        }
+
         @Override
         public ConnectionHandler setConnectionHandler() {
 
             log.info( "set client handler" );
             return new ConnectionHandler() {
-                @Override
-                protected void onMessageIn(MessageOuterClass.Message m) { }
-                @Override
-                protected void onMessageOut(MessageOuterClass.Message m) { }
-                @Override
-                protected void onConnect(String ClientId, String remoteAddress) { }
-                @Override
-                protected void onDisconnect(String ClientId) { }
-                @Override
-                public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
+                @Override protected void onMessageIn(MessageOuterClass.Message m) { }
+                @Override protected void onMessageOut(MessageOuterClass.Message m) { }
+                @Override protected void onConnect(String ClientId, String remoteAddress) { }
+                @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
+                @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
                         Thread.sleep( new Random().nextInt( 2000 ) );
                         if (type == RequestType.PLAIN || type == RequestType.HTTP) {
@@ -77,18 +80,13 @@ public class SessionConnectionHandlerTest {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
-                    @Override
-                    protected void onMessageIn(MessageOuterClass.Message m) { }
-                    @Override
-                    protected void onMessageOut(MessageOuterClass.Message m) { }
-                    @Override
-                    protected void onConnect(String ClientId, String remoteAddress) {
+                    @Override protected void onMessageIn(MessageOuterClass.Message m) { }
+                    @Override protected void onMessageOut(MessageOuterClass.Message m) { }
+                    @Override protected void onConnect(String ClientId, String remoteAddress) {
                         logger.info( "connect handler: {}, {}", clientId, remoteAddress );
                     }
-                    @Override
-                    protected void onDisconnect(String ClientId) { }
-                    @Override
-                    public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
+                    @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
+                    @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
                         logger.info( "request: {}, {}", sessionId, requestId );
                         getServer().getTaskPool().execute( () -> {
                             try {

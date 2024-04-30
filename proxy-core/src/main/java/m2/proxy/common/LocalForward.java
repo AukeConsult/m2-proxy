@@ -1,7 +1,6 @@
-package m2.proxy.client;
+package m2.proxy.common;
 
 import m2.proxy.common.*;
-import m2.proxy.server.ProxyServer;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
 
@@ -9,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public abstract class LocalForward implements Forward {
+public abstract class LocalForward implements Service {
 
     HttpHelper httpHelper = new HttpHelper();
 
@@ -36,15 +35,12 @@ public abstract class LocalForward implements Forward {
             throw new HttpException( ProxyStatus.FAIL, e.getMessage() );
         }
     }
-    private ProxyServer server;
+
+    private Service service;
     @Override
-    public final ProxyServer getServer() {
-        return server;
-    }
+    public Service getService() { return service; }
     @Override
-    public final void setServer(ProxyServer server) {
-        this.server = server;
-    }
+    public void setService(Service service) { this.service = service; }
 
     protected abstract Optional<ContentResult> onHandlePath(String verb, String path, Map<String, String> headers, String contentType, String body)
             throws HttpException;

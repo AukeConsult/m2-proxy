@@ -1,7 +1,12 @@
 package m2.proxy.server;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import m2.proxy.common.*;
+import m2.proxy.proto.MessageOuterClass.Http;
+import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.TcpBaseServerBase;
@@ -13,96 +18,172 @@ import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
 import rawhttp.core.RawHttpResponse;
 
-import java.util.Map;
+import java.io.IOException;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class RemoteForward extends TcpBaseServerBase implements Forward {
-    private static final Logger log = LoggerFactory.getLogger(RemoteForward.class);
+public class RemoteForward extends TcpBaseServerBase implements Service {
+    private static final Logger log = LoggerFactory.getLogger( RemoteForward.class );
 
     private final RawHttp http = new RawHttp();
     private final HttpHelper httpHelper = new HttpHelper();
 
-    public final Map<String, RemoteAccess> access = new ConcurrentHashMap<>();
-    public Map<String, RemoteAccess> getAccess() {
-        return access;
-    }
-
     private final int timeOut;
 
     public RemoteForward(int tcpPort, int timeOut) {
-        super(tcpPort, Network.localAddress(), null);
+        super( tcpPort, Network.localAddress(), null );
         this.timeOut = timeOut;
     }
 
-    public Optional<RawHttpResponse<?>> handleHttp(RawHttpRequest request) throws TcpException {
-        String accessKey = httpHelper.getAccessPath(request);
-        if (!accessKey.isEmpty()) {
-            if (access.containsKey(accessKey)) {
-                log.info("forward key: {}", accessKey);
-                String clientId = access.get(accessKey).getClientId();
-                if (getClients().containsKey(clientId) && getClients().get(clientId).isOpen()) {
-                    ConnectionHandler client = getClients().get(clientId);
-                    long sessionId = request.getSenderAddress().isPresent() ?
-                            UUID.nameUUIDFromBytes(
-                                    request.getSenderAddress().toString().getBytes()
-                                                  ).getMostSignificantBits()
-                            : 1000L;
-                    if (!client.getSessions().containsKey(sessionId)) {
-                        client.openSession(new SessionHandler(sessionId) {
-                            @Override
-                            public void onReceive(long requestId, ByteString reply) {
+    private Optional<RawHttpResponse<?>> logonRequest(RawHttpRequest request) {
+
+        try {
+
+            String remoteClientId = request.getUri().getPath().replace( "/logon/", "" );
+            log.info( "Logon to client: {}", clientId );
+
+            String remoteAddress = "";
+            if (request.getSenderAddress().isPresent()) {
+                remoteAddress = request.getSenderAddress().get().getHostAddress();
+            }
+
+            RawHttpRequest resp = request.eagerly();
+            String json = resp.getBody().map( httpHelper.decodeBody() ).orElse( "{}" );
+
+            JsonObject jsonObj = new Gson().fromJson( json, JsonObject.class );
+            String accessToken = request.getHeaders().get( "Access-Token" ).toString();
+            String agent = request.getHeaders().get( "Agent" ).toString();
+
+            Optional<String> accessPath = logon(
+                    remoteClientId,
+                    remoteAddress,
+                    jsonObj.get( "userid" ).getAsString(),
+                    jsonObj.get( "password" ).getAsString(),
+                    accessToken,
+                    agent
+            );
+            if(accessPath.isPresent()) {
+                return Optional.of( http.parseResponse(
+                        httpHelper.errReply( 200, ProxyStatus.OK, "" )
+                ) );
+            } else {
+                log.warn( "Rejected client: {}", clientId );
+                return Optional.of( http.parseResponse(
+                        httpHelper.errReply( 403, ProxyStatus.REJECTED, "" )
+                ) );
+            }
+        } catch (IOException | TcpException e) {
+            log.warn( "Exception client: {}, err: {}", clientId, e.getMessage() );
+            return Optional.of( http.parseResponse(
+                    httpHelper.errReply( 404, ProxyStatus.FAIL, e.getMessage() )
+            ) );
+        }
+    }
+
+    private Optional<RawHttpResponse<?>> forward(RawHttpRequest request) {
+
+        Optional<String> accessPath = httpHelper.getAccessPath( request );
+        if (accessPath.isPresent()) {
+            Optional<RawHttpRequest> requestOut = httpHelper.forward( accessPath.get(), request );
+            if (requestOut.isPresent() && getAccess().containsKey( accessPath.get() )) {
+
+                try {
+
+                    log.info( "forward key: {}", accessPath.get() );
+
+                    String remoteAddress = "";
+                    if (request.getSenderAddress().isPresent()) {
+                        remoteAddress = request.getSenderAddress().get().getHostAddress();
+                    }
+                    String accessToken = request.getHeaders().get( "AccessToken" ).toString();
+                    String agent = request.getHeaders().get( "Agent" ).toString();
+                    String path = requestOut.get().getStartLine().getUri().getPath();
+
+                    Optional<ByteString> ret = forwardHttp(
+                            accessPath.get(),
+                            path,
+                            remoteAddress,
+                            accessToken,
+                            agent,
+                            requestOut.get().eagerly().toString(),
+                            timeOut
+                    );
+
+                    if (ret.isPresent()) {
+                        try {
+                            HttpReply reply = HttpReply.parseFrom( ret.get() );
+                            if (reply.getOkLogon()) {
+                                log.warn( "GOT REPLY client: {}", clientId );
+                                return Optional.of( http.parseResponse( reply.getReply().toStringUtf8() ) );
+                            } else {
+                                log.warn( "REJECTED REQUEST client: {}", clientId );
+                                return Optional.of( http.parseResponse(
+                                        httpHelper.errReply( 403, ProxyStatus.REJECTED, "no access" )
+                                ) );
                             }
-                        }, 10000);
-                    }
-                    SessionHandler session = client.getSessions().get(sessionId);
-                    Optional<RawHttpRequest> requestOut = httpHelper.forward( accessKey, request );
-                    if(requestOut.isPresent()) {
-                        log.info("Direct Forward {}",requestOut.get().getStartLine().getUri().toString());
-                        ByteString ret = session.sendRequest(
-                                "", ByteString.copyFromUtf8(requestOut.get().toString()), RequestType.HTTP, timeOut);
-                        if (!ret.isEmpty()) {
-                            return Optional.of(http.parseResponse(ret.toStringUtf8()));
+                        } catch (InvalidProtocolBufferException e) {
+                            new TcpException( ProxyStatus.FAIL, e.getMessage() );
                         }
-                    } else {
-                        log.warn("No request forward: {}",request.getStartLine().getUri().toString());
                     }
-                } else {
-                    throw new TcpException(ProxyStatus.NOTOPEN, clientId);
+
+                } catch (TcpException e) {
+                    log.warn( "client: {}, err: {}", clientId, e.getMessage() );
+                    if(e.getStatus().equals( ProxyStatus.REJECTED )) {
+                        return Optional.of(
+                                http.parseResponse(
+                                        httpHelper.errReply( 403, e.getStatus(), e.getMessage() )
+                                )
+                        );
+                    } else if(e.getStatus().equals( ProxyStatus.FAIL )){
+                        return Optional.of(
+                                http.parseResponse(
+                                        httpHelper.errReply( 500, e.getStatus(), e.getMessage() )
+                                )
+                        );
+                    } else {
+                        return Optional.of(
+                                http.parseResponse(
+                                        httpHelper.errReply( 404, e.getStatus(), e.getMessage() )
+                                )
+                        );
+                    }
+                } catch (IOException e) {
+                    return Optional.of(
+                            http.parseResponse(
+                                    httpHelper.errReply( 500, ProxyStatus.FAIL, e.getMessage() )
+                            )
+                    );
                 }
             }
         }
         return Optional.empty();
     }
 
+    public Optional<RawHttpResponse<?>> handleHttp(RawHttpRequest request) throws TcpException {
+        if (request.getMethod().equals( "PUT" ) && request.getUri().getPath().startsWith( "/logon" )) {
+            return logonRequest( request );
+        } else {
+            return forward( request );
+        }
+    }
+
     @Override
     public ConnectionHandler setConnectionHandler() {
         return new ConnectionHandler() {
             @Override
-            protected void onMessageIn(Message m) {
-            }
+            protected void onMessageIn(Message m) { }
             @Override
-            protected void onMessageOut(Message m) {
-            }
+            protected void onMessageOut(Message m) { }
             @Override
-            protected void onConnect(String ClientId, String remoteAddress) {
-            }
+            protected void onConnect(String ClientId, String remoteAddress) { }
+            @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
             @Override
-            protected void onDisconnect(String ClientId) {
-            }
-            @Override
-            public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) {
-            }
+            public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) { }
         };
     }
-    private ProxyServer server;
+
+    private Service service;
     @Override
-    public ProxyServer getServer() {
-        return server;
-    }
+    public Service getService() { return service; }
     @Override
-    public void setServer(ProxyServer server) {
-        this.server=server;
-    }
+    public void setService(Service service) { }
 }

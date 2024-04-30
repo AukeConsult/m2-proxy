@@ -1,6 +1,5 @@
 package m2.proxy.common;
 
-import m2.proxy.client.DirectSite;
 import org.junit.jupiter.api.Test;
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;

@@ -1,12 +1,12 @@
 package m2.proxy.server;
 
 public class RemoteAccess {
-    private final String key;
+    private final String accessPath;
     private final String clientId;
-    public String getKey() { return key; }
+    public String getAccessPath() { return accessPath; }
     public String getClientId() { return clientId; }
-    public RemoteAccess(String key, String clientId) {
-        this.key = key;
+    public RemoteAccess(String accessPath, String clientId) {
+        this.accessPath = accessPath;
         this.clientId = clientId;
     }
 }

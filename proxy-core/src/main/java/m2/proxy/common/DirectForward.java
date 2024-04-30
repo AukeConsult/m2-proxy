@@ -1,10 +1,5 @@
-package m2.proxy.client;
+package m2.proxy.common;
 
-import m2.proxy.common.Forward;
-import m2.proxy.common.HttpException;
-import m2.proxy.common.HttpHelper;
-import m2.proxy.common.ProxyStatus;
-import m2.proxy.server.ProxyServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.*;
@@ -15,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DirectForward implements Forward {
+public class DirectForward implements Service {
     private static final Logger log = LoggerFactory.getLogger( DirectForward.class );
 
     private final TcpRawHttpClient tcpRawHttpClient = new TcpRawHttpClient();
@@ -43,14 +38,9 @@ public class DirectForward implements Forward {
         }
         return Optional.empty();
     }
-
-    private ProxyServer server;
+    private Service service;
     @Override
-    public ProxyServer getServer() {
-        return server;
-    }
+    public Service getService() { return service; }
     @Override
-    public void setServer(ProxyServer server) {
-        this.server=server;
-    }
+    public void setService(Service service) { }
 }

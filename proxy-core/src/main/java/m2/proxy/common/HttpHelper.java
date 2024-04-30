@@ -1,6 +1,5 @@
 package m2.proxy.common;
 
-import m2.proxy.client.DirectSite;
 import rawhttp.core.*;
 import rawhttp.core.body.BodyReader;
 
@@ -80,7 +79,6 @@ public class HttpHelper {
     }
 
     public Optional<RawHttpRequest> forward(String accessKey, RawHttpRequest request)  {
-
         if(request.getStartLine().getUri().getPath().startsWith( "/" + accessKey )) {
             return Optional.of(updateRequest( "/" + accessKey,request.getStartLine().getUri().getHost(), getHostAddress(request), request));
         } else {
@@ -88,12 +86,12 @@ public class HttpHelper {
         }
     }
 
-    public String getAccessPath(RawHttpRequest request) {
+    public Optional<String> getAccessPath(RawHttpRequest request) {
         final String[] path = request.getStartLine().getUri().getPath().split("/");
         if(path.length>1) {
-            return path[1];
+            return Optional.of(path[1]);
         } else {
-            return "";
+            return Optional.empty();
         }
     }
 

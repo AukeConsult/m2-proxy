@@ -1,6 +1,7 @@
 package m2.proxy.tcp.handlers;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import m2.proxy.common.ProxyStatus;
 import m2.proxy.common.TcpException;
 import m2.proxy.proto.MessageOuterClass.*;
@@ -8,6 +9,7 @@ import m2.proxy.tcp.TcpBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -46,6 +48,33 @@ public abstract class SessionHandler {
                 .setRequest(r)
                 .build();
         handler.write(m);
+    }
+
+    public Optional<String> logon(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
+
+        try {
+
+            ByteString ret = sendRequest("",
+                    Logon.newBuilder()
+                            .setClientId(  getHandler().getClientId().get())
+                            .setUserId( userId )
+                            .setPassWord( passWord )
+                            .setRemoteAddress( remoteAddress )
+                            .setAccessToken( accessToken )
+                            .setAgent( agent )
+                            .build().toByteString()
+                    , RequestType.LOGON
+                    ,5000
+                    );
+
+            if(Logon.parseFrom( ret ).getOkLogon()) {
+                return Optional.of(Logon.parseFrom( ret ).getAccessPath());
+            }
+
+        } catch (InvalidProtocolBufferException | TcpException e) {
+            log.error( "Logon error {}",e.getMessage() );
+        }
+        return Optional.empty();
     }
 
     public synchronized ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut) throws TcpException {
@@ -145,7 +174,6 @@ public abstract class SessionHandler {
                 onReceive(req.requestId,res);
             }
         }
-
     }
     public abstract void onReceive(long requestId, ByteString reply);
 

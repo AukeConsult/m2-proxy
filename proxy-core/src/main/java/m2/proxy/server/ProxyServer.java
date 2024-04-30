@@ -1,11 +1,8 @@
 package m2.proxy.server;
 
-import m2.proxy.client.DirectForward;
-import m2.proxy.client.LocalForward;
-import m2.proxy.common.HttpException;
-import m2.proxy.common.HttpHelper;
-import m2.proxy.common.ProxyStatus;
-import m2.proxy.common.TcpException;
+import m2.proxy.common.DirectForward;
+import m2.proxy.common.LocalForward;
+import m2.proxy.common.*;
 import m2.proxy.executors.ServiceBaseExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +16,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
-public class ProxyServer extends ServiceBaseExecutor {
+public class ProxyServer extends ServiceBaseExecutor implements Service {
 
     private static final Logger log = LoggerFactory.getLogger( ProxyServer.class );
 
@@ -49,9 +46,9 @@ public class ProxyServer extends ServiceBaseExecutor {
         this.remoteForward = remoteForward;
         this.localForward = localForward;
 
-        this.directForward.setServer( this );
-        this.remoteForward.setServer( this );
-        this.localForward.setServer( this );
+        this.directForward.setService( this );
+        this.remoteForward.setService( this );
+        this.localForward.setService( this );
 
         this.serverSite = new ServerSite( this );
         this.tcpRawHttpServer = new TcpRawHttpServer( serverPort );
@@ -133,4 +130,8 @@ public class ProxyServer extends ServiceBaseExecutor {
     }
     @Override
     protected void forceClose() { }
+    @Override
+    public Service getService() { return this; }
+    @Override
+    public void setService(Service service) { }
 }
