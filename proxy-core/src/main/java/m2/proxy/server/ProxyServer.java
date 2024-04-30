@@ -4,6 +4,7 @@ import m2.proxy.common.DirectForward;
 import m2.proxy.common.LocalForward;
 import m2.proxy.common.*;
 import m2.proxy.executors.ServiceBaseExecutor;
+import m2.proxy.common.ProxyMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.RawHttp;
@@ -20,8 +21,10 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
 
     private static final Logger log = LoggerFactory.getLogger( ProxyServer.class );
 
+    private final ProxyMetrics proxyMetrics = new ProxyMetrics();
+    public ProxyMetrics getMetrics() { return proxyMetrics; }
+
     private final TcpRawHttpServer tcpRawHttpServer;
-    private final ServerMetrics metrics = new ServerMetrics();
 
     private final int serverPort;
     private final LocalForward localForward;
@@ -51,6 +54,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
         this.localForward.setService( this );
 
         this.serverSite = new ServerSite( this );
+        this.proxyMetrics.setId( remoteForward.getClientId() );
         this.tcpRawHttpServer = new TcpRawHttpServer( serverPort );
     }
 
@@ -61,37 +65,37 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
             tcpRawHttpServer.start( request -> {
                 // check access keys forward with tcp
                 try {
-                    metrics.transIn.incrementAndGet();
+                    proxyMetrics.transIn.incrementAndGet();
                     Optional<RawHttpResponse<?>> remote = remoteForward.handleHttp( request );
                     if (remote.isPresent()) {
-                        metrics.transRemoteOut.incrementAndGet();
+                        proxyMetrics.transRemoteOut.incrementAndGet();
                         return remote;
                     }
                     Optional<RawHttpResponse<?>> direct = directForward.handleHttp( request );
                     if (direct.isPresent()) {
-                        metrics.transDirectOut.incrementAndGet();
+                        proxyMetrics.transDirectOut.incrementAndGet();
                         return direct;
                     }
                     RawHttpRequest requestOut = request.eagerly();
                     // server fixed
                     Optional<RawHttpResponse<?>> server = serverSite.handleHttp( requestOut );
                     if (server.isPresent()) {
-                        metrics.transServerOut.incrementAndGet();
+                        proxyMetrics.transServerOut.incrementAndGet();
                         return server;
                     }
                     // execute local replies
                     Optional<RawHttpResponse<?>> local = localForward.handleHttp( requestOut );
                     if (local.isPresent()) {
-                        metrics.transLocalOut.incrementAndGet();
+                        proxyMetrics.transLocalOut.incrementAndGet();
                         return local;
                     }
                     throw new HttpException( ProxyStatus.NOTFOUND, requestOut.getUri().getPath() );
                 } catch (HttpException e) {
-                    metrics.transError.incrementAndGet();
+                    proxyMetrics.transError.incrementAndGet();
                     log.error( "Request: {}, HttpException: {}", request.getUri().getPath(), e.getMessage() );
                     return httpHelper.errResponse( e.getStatus(), e.getMessage() );
                 } catch (TcpException e) {
-                    metrics.transError.incrementAndGet();
+                    proxyMetrics.transError.incrementAndGet();
                     log.error( "Request: {}, TcpException: {}", request.getUri().getPath(), e.getMessage() );
                     return httpHelper.errResponse( e.getStatus(), e.getMessage() );
                 } catch (IOException e) {
@@ -119,7 +123,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
     @Override
     protected void execute() {
         while (isRunning()) {
-            metrics.printLog();
+            proxyMetrics.printLog();
             waitfor( 5000L );
         }
     }
@@ -127,6 +131,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
     protected void close() {
         tcpRawHttpServer.stop();
         getRemoteForward().stop();
+        proxyMetrics.printLog();
     }
     @Override
     protected void forceClose() { }

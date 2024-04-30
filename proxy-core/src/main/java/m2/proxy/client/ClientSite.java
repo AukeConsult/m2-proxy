@@ -19,6 +19,8 @@ public class ClientSite extends ServiceBase {
     private static final Logger log = LoggerFactory.getLogger( ClientSite.class );
     HttpHelper httpHelper = new HttpHelper();
 
+    private final ProxyMetrics proxyMetrics = new ProxyMetrics();
+    public ProxyMetrics getMetrics() { return proxyMetrics; }
 
     private final int sitePort;
     private final DirectForward directForward;
@@ -99,22 +101,27 @@ public class ClientSite extends ServiceBase {
             final HttpHelper httpHelper = new HttpHelper();
             tcpRawHttpServer.start( request -> {
                 // check access keys forward with tcp
+                proxyMetrics.transIn.incrementAndGet();
                 try {
                     Optional<RawHttpResponse<?>> direct = directForward.handleHttp( request );
                     if (direct.isPresent()) {
+                        proxyMetrics.transDirectOut.incrementAndGet();
                         return direct;
                     }
                     RawHttpRequest requestOut = request.eagerly();
                     // server fixed
                     Optional<RawHttpResponse<?>> server = handleHttp( requestOut );
                     if (server.isPresent()) {
+                        proxyMetrics.transServerOut.incrementAndGet();
                         return server;
                     }
                     // execute local replies
                     Optional<RawHttpResponse<?>> local = localForward.handleHttp( requestOut );
                     if (local.isPresent()) {
+                        proxyMetrics.transLocalOut.incrementAndGet();
                         return local;
                     }
+                    proxyMetrics.transError.incrementAndGet();
                     throw new HttpException( ProxyStatus.NOTFOUND, requestOut.getUri().getPath() );
                 } catch (HttpException e) {
                     log.error( "Request: {}, HttpException: {}", request.getUri().getPath(), e.getMessage() );

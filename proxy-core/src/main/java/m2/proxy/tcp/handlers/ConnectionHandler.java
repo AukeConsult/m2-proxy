@@ -3,16 +3,13 @@ package m2.proxy.tcp.handlers;
 import com.google.protobuf.ByteString;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import m2.proxy.common.ProxyStatus;
-import m2.proxy.common.TcpException;
 import m2.proxy.proto.MessageOuterClass.*;
 import m2.proxy.tcp.Encrypt;
 import m2.proxy.tcp.TcpBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rawhttp.core.RawHttpRequest;
-import rawhttp.core.RawHttpResponse;
 
+import java.net.InetSocketAddress;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
@@ -31,19 +28,7 @@ public abstract class ConnectionHandler {
 
     private static final int MAX_RETRY = 10;
 
-    public abstract static class ClientWorker implements Runnable {
-        public AtomicBoolean running = new AtomicBoolean();
-        public abstract void stopWorker();
-    }
 
-    public static class WorkCount {
-        public AtomicInteger ping = new AtomicInteger();
-        public AtomicInteger key = new AtomicInteger();
-        public AtomicInteger message = new AtomicInteger();
-        public AtomicInteger request = new AtomicInteger();
-        public AtomicInteger reply = new AtomicInteger();
-        public AtomicInteger bytes = new AtomicInteger();
-    }
 
     public static class WaitRequest {
         boolean async;
@@ -52,8 +37,8 @@ public abstract class ConnectionHandler {
         Request request;
     }
 
-    public WorkCount outWork = new WorkCount();
-    public WorkCount inWork = new WorkCount();
+    public ConnectionWorkCount outWork = new ConnectionWorkCount();
+    public ConnectionWorkCount inWork = new ConnectionWorkCount();
 
     private TcpBase server;
     public TcpBase getServer() { return server; }
@@ -68,7 +53,8 @@ public abstract class ConnectionHandler {
 
     private ChannelHandlerContext ctx;
     private final AtomicReference<String> channelId = new AtomicReference<>();
-    private final AtomicReference<String> remoteAddress = new AtomicReference<>();
+    private final AtomicReference<String> remotePublicAddress = new AtomicReference<>();
+    private final AtomicInteger remotePublicPort = new AtomicInteger();
 
     private final AtomicReference<String> remoteLocalAddress = new AtomicReference<>();
     private final AtomicInteger remoteLocalPort = new AtomicInteger();
@@ -84,17 +70,20 @@ public abstract class ConnectionHandler {
 
     private final AtomicBoolean hasRemoteKey = new AtomicBoolean();
 
-    private ClientWorker workerClient;
-    public ClientWorker getWorkerClient() { return workerClient; }
-    public void setWorkerClient(ClientWorker workerClient) { this.workerClient = workerClient; }
+    private ConnectionWorker connectionWorker;
+    public ConnectionWorker getConnectionWorker() { return connectionWorker; }
 
     public ChannelHandlerContext getCtx() { return ctx; }
     public AtomicReference<String> getClientId() { return clientId; }
     public String getChannelId() { return channelId.get(); }
-    public String getRemoteAddress() { return remoteAddress.get(); }
-
+    public String getRemotePublicAddress() { return remotePublicAddress.get(); }
     public AtomicReference<String> getRemoteLocalAddress() { return remoteLocalAddress; }
     public AtomicInteger getRemoteLocalPort() { return remoteLocalPort; }
+
+    public void setConnectionWorker(ConnectionWorker connectionWorker) {
+        this.connectionWorker = connectionWorker;
+        this.connectionWorker.setHandler( this );
+    }
 
     public void close() {
         log.info( "{} -> close handler: {}, client: {}", getServer().getClientId(), getChannelId(), getClientId() );
@@ -114,13 +103,12 @@ public abstract class ConnectionHandler {
     }
 
     // where is where session is created
-    public SessionHandler openSession(SessionHandler session, int sessionTimeOut)  {
+    public SessionHandler openSession(SessionHandler session, int sessionTimeOut) {
 
         session.handler = this;
         session.sessionTimeOut.set( System.currentTimeMillis() + sessionTimeOut );
         sessions.put( session.getSessionId(), session );
         return session;
-
     }
 
     public void reply(long sessionId, long requestId, RequestType type, ByteString reply) {
@@ -161,11 +149,23 @@ public abstract class ConnectionHandler {
 
     public ConnectionHandler() { }
 
+    private String getRemoteAddress() {
+        return remotePublicAddress.get() + ":" + remotePublicPort.get();
+    }
+
+    private void setPublicAddress(ChannelHandlerContext ctx) {
+        if (ctx != null) {
+            InetSocketAddress a = ( InetSocketAddress ) ctx.channel().remoteAddress();
+            this.remotePublicAddress.set( a.getAddress().getHostAddress() );
+            this.remotePublicPort.set( a.getPort() );
+        }
+    }
+
     public final void initClient(String channelId, ChannelHandlerContext ctx) {
 
         this.ctx = ctx;
         this.channelId.set( channelId );
-        this.remoteAddress.set( ctx != null ? ctx.channel().remoteAddress().toString() : null );
+        setPublicAddress( ctx );
 
         log.info( "{} -> Server init ch: {}, addr: {}",
                 server.getClientId(),
@@ -185,6 +185,8 @@ public abstract class ConnectionHandler {
                                 .setClientId( getServer().getClientId() )
                                 .setLocalAddr( getServer().getLocalAddress() )
                                 .setLocalPort( getServer().getLocalPort() )
+                                .setPublicAddress( remotePublicAddress.get() )
+                                .setPublicPort( remotePublicPort.get() )
                                 .build()
                         )
                         .setPublicKey( PublicRsaKey.newBuilder()
@@ -216,7 +218,7 @@ public abstract class ConnectionHandler {
                 log.warn( "SERVER MISSING INIT ch: {}, status: {}, addr: {}",
                         channelId,
                         handler.remoteStatus.get(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
             } else {
                 server.connect( this );
@@ -229,7 +231,7 @@ public abstract class ConnectionHandler {
 
         this.ctx = ctx;
         this.channelId.set( channelId );
-        this.remoteAddress.set( ctx != null ? ctx.channel().remoteAddress().toString() : null );
+        setPublicAddress( ctx );
 
         log.info( "{} -> Client init ch: {}, addr: {}",
                 server.getClientId(),
@@ -253,7 +255,7 @@ public abstract class ConnectionHandler {
                 log.warn( "CLIENT MISSING INIT ch: {}, status: {}, addr: {}",
                         channelId,
                         handler.remoteStatus.get(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
             } else {
                 server.connect( this );
@@ -284,7 +286,7 @@ public abstract class ConnectionHandler {
                         getServer().getClientId(),
                         channelId,
                         m.getPing().getStatus(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
                 remoteStatus.set( m.getPing().getStatus() );
                 if (remoteStatus.get() == PingStatus.ONINIT) {
@@ -294,14 +296,15 @@ public abstract class ConnectionHandler {
                                     .setClientId( getServer().getClientId() )
                                     .setLocalAddr( getServer().getLocalAddress() )
                                     .setLocalPort( getServer().getLocalPort() )
+                                    .setPublicAddress( remotePublicAddress.get() )
+                                    .setPublicPort( remotePublicPort.get() )
                                     .build()
                             )
                             .setPublicKey( PublicRsaKey.newBuilder()
                                     .setId( getServer().getRsaKey().getPublic().hashCode() )
                                     .setKey( ByteString.copyFrom( getServer().getRsaKey().getPublic().getEncoded() ) )
                                     .build()
-                            )
-                            .build()
+                            ).build()
                     );
                     outWork.key.incrementAndGet();
                 }
@@ -326,6 +329,10 @@ public abstract class ConnectionHandler {
                 remoteLocalAddress.set( m.getInit().getLocalAddr() );
                 remoteLocalPort.set( m.getInit().getLocalPort() );
 
+                // setting the client public address
+                getServer().setPublicAddress( m.getInit().getPublicAddress() );
+                getServer().setPublicPort( m.getInit().getPublicPort() );
+
                 getServer().getActiveClients().put( clientId.get(), this );
 
                 log.info( "{} -> INIT, ch: {}, remoteLocalAddr {}:{}, remoteAddr: {}",
@@ -333,7 +340,7 @@ public abstract class ConnectionHandler {
                         channelId,
                         m.getInit().getLocalAddr(),
                         m.getInit().getLocalPort(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
 
                 if (m.getPublicKey().isInitialized()) {
@@ -352,10 +359,10 @@ public abstract class ConnectionHandler {
                             getServer().getClientId(),
                             channelId,
                             remoteKeyId.get(),
-                            remoteAddress
+                            getRemoteAddress()
                     );
                     myStatus.set( PingStatus.HASKEY );
-                    onConnect( clientId.get(), remoteAddress.get() );
+                    onConnect( clientId.get(), remotePublicAddress.get() );
                 }
                 sendPing();
             } else if (m.getType() == MessageType.DISCONNECT) {
@@ -366,15 +373,14 @@ public abstract class ConnectionHandler {
                 log.info( "{} -> ch: {}, DISCONNECT, addr: {}",
                         getServer().getClientId(),
                         channelId,
-                        remoteAddress
+                        getRemoteAddress()
                 );
 
                 myStatus.set( PingStatus.DISCONNECTED );
-                getServer().getActiveClients().remove( clientId.get());
+                getServer().getActiveClients().remove( clientId.get() );
 
-                onDisonnect( clientId.get(), remoteAddress.get() );
+                onDisonnect( clientId.get(), remotePublicAddress.get() );
                 getServer().disConnect( this );
-
             } else if (m.getType() == MessageType.PUBLIC_KEY) {
 
                 inWork.key.incrementAndGet();
@@ -396,10 +402,10 @@ public abstract class ConnectionHandler {
                             getServer().getClientId(),
                             channelId,
                             remoteKeyId.get(),
-                            remoteAddress
+                            getRemoteAddress()
                     );
                     myStatus.set( PingStatus.HASKEY );
-                    onConnect( clientId.get(), remoteAddress.get() );
+                    onConnect( clientId.get(), remotePublicAddress.get() );
                     sendPing();
                 }
             } else if (m.getType() == MessageType.MESSAGE) {
@@ -409,7 +415,7 @@ public abstract class ConnectionHandler {
                         getServer().getClientId(),
                         channelId,
                         m.getSubMessage().toStringUtf8(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
             } else if (m.getType() == MessageType.RAW_MESSAGE) {
                 inWork.message.incrementAndGet();
@@ -418,7 +424,7 @@ public abstract class ConnectionHandler {
                         getServer().getClientId(),
                         channelId,
                         m.getSubMessage().size(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
             } else if (m.getType() == MessageType.REQUEST) {
                 inWork.request.incrementAndGet();
@@ -427,14 +433,14 @@ public abstract class ConnectionHandler {
                         getServer().getClientId(),
                         channelId,
                         m.getSubMessage().toStringUtf8(),
-                        remoteAddress
+                        getRemoteAddress()
                 );
 
                 if (m.getRequest().getType() == RequestType.HTTP) {
 
                     Http h = Http.parseFrom( m.getSubMessage() );
                     // check is all ok
-                    if(getServer().checkAccess(
+                    if (getServer().checkAccess(
                             h.getAccessPath(),
                             h.getRemoteAddress(),
                             h.getAccessToken(),
@@ -448,7 +454,6 @@ public abstract class ConnectionHandler {
                                 m.getRequest().getDestination(),
                                 m.getRequest().getRequestMessage()
                         );
-
                     } else {
 
                         reply( m.getRequest().getSessionId(),
@@ -458,9 +463,7 @@ public abstract class ConnectionHandler {
                                         .build()
                                         .toByteString()
                         );
-
                     }
-
                 } else if (m.getRequest().getType() == RequestType.LOGON) {
 
                     Logon logon = Logon.parseFrom( m.getRequest().getRequestMessage() );
@@ -473,7 +476,7 @@ public abstract class ConnectionHandler {
                                 logon.getAgent()
                         );
                         Logon replyMessage;
-                        if(accessPath.isPresent()) {
+                        if (accessPath.isPresent()) {
                             replyMessage = Logon.newBuilder()
                                     .setAccessPath( accessPath.get() )
                                     .setOkLogon( true )
@@ -491,7 +494,6 @@ public abstract class ConnectionHandler {
                                 replyMessage.toByteString()
                         );
                     }
-
                 } else {
 
                     onRequest(
@@ -502,14 +504,13 @@ public abstract class ConnectionHandler {
                             m.getRequest().getRequestMessage()
                     );
                 }
-
             } else if (m.getType() == MessageType.REPLY) {
                 inWork.reply.incrementAndGet();
                 inWork.bytes.addAndGet( m.getSerializedSize() );
                 log.debug( "{} -> ch: {}, REPLY addr: {}",
                         getServer().getClientId(),
                         channelId,
-                        remoteAddress
+                        getRemoteAddress()
                 );
                 // handle incoming replies
                 if (requestSessions.containsKey( m.getReply().getRequestId() )) {
@@ -539,7 +540,7 @@ public abstract class ConnectionHandler {
 
     public void sendDisconnect() {
 
-        myStatus.set(PingStatus.DISCONNECTED);
+        myStatus.set( PingStatus.DISCONNECTED );
         Message m = Message.newBuilder()
                 .setType( MessageType.DISCONNECT )
                 .setPing( Ping.newBuilder()
@@ -565,12 +566,10 @@ public abstract class ConnectionHandler {
             log.warn( "{} -> ch: {}, NO KEY REPLY addr: {}",
                     getServer().getClientId(),
                     channelId,
-                    remoteAddress
+                    getRemoteAddress()
             );
         }
     }
-
-
 
     public void sendRawMessage(byte[] bytes) {
 
@@ -585,7 +584,7 @@ public abstract class ConnectionHandler {
             log.warn( "{} -> ch: {}, NO KEY REPLY addr: {}",
                     getServer().getClientId(),
                     channelId,
-                    remoteAddress
+                    getRemoteAddress()
             );
         }
     }
@@ -593,15 +592,15 @@ public abstract class ConnectionHandler {
     public void printWork() {
 
         log.info( """
+                        \r
                         {} -> ch: {}, addr: {} \r
                         OUT > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {} \r
-                        IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {}\s
-
+                        IN > ping: {}, key: {}, message: {}, request: {}, reply: {}, bytes: {}
                         """
                 ,
                 server.getClientId(),
                 channelId,
-                remoteAddress,
+                getRemoteAddress(),
                 outWork.ping.get(),
                 outWork.key.get(),
                 outWork.message.get(),

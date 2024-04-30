@@ -2,7 +2,8 @@ package m2.proxy.tcp;
 
 import com.google.protobuf.ByteString;
 import m2.proxy.common.TcpException;
-import m2.proxy.proto.MessageOuterClass;
+import m2.proxy.proto.MessageOuterClass.MessageType;
+import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.SessionHandler;
@@ -17,6 +18,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,7 +38,7 @@ public class SessionConnectionHandlerTest {
         @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
             return true;
         }
-        @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+        @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
             return Optional.of(getClientId()+"Key");
         }
 
@@ -43,9 +46,22 @@ public class SessionConnectionHandlerTest {
         public ConnectionHandler setConnectionHandler() {
 
             log.info( "set client handler" );
+            AtomicLong sessionId= new AtomicLong();
+            AtomicLong requestId= new AtomicLong();
+
             return new ConnectionHandler() {
-                @Override protected void onMessageIn(MessageOuterClass.Message m) { }
-                @Override protected void onMessageOut(MessageOuterClass.Message m) { }
+                @Override protected void onMessageIn(Message m) {
+                    if(m.getType()== MessageType.REQUEST) {
+                        sessionId.set(m.getRequest().getSessionId());
+                        requestId.set(m.getRequest().getRequestId());
+                    }
+                }
+                @Override protected void onMessageOut(Message m) {
+                    if(m.getType()== MessageType.REPLY) {
+                        assertEquals(sessionId.get(),m.getReply().getSessionId());
+                        assertEquals(requestId.get(),m.getReply().getRequestId());
+                    }
+                }
                 @Override protected void onConnect(String ClientId, String remoteAddress) { }
                 @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                 @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
@@ -80,14 +96,14 @@ public class SessionConnectionHandlerTest {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
-                    @Override protected void onMessageIn(MessageOuterClass.Message m) { }
-                    @Override protected void onMessageOut(MessageOuterClass.Message m) { }
+                    @Override protected void onMessageIn(Message m) { }
+                    @Override protected void onMessageOut(Message m) { }
                     @Override protected void onConnect(String ClientId, String remoteAddress) {
-                        logger.info( "connect handler: {}, {}", clientId, remoteAddress );
+                        logger.info( "Connect handler: {}, {}", clientId, remoteAddress );
                     }
                     @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
-                        logger.info( "request: {}, {}", sessionId, requestId );
+                        logger.info( "Request: {}, {}", sessionId, requestId );
                         getServer().getTaskPool().execute( () -> {
                             try {
                                 Thread.sleep( TcpBase.rnd.nextInt( 500 ) + 100 );

@@ -67,6 +67,8 @@ message Init {
   string clientId = 1;
   string localAddr = 2;
   int32 localPort = 3;
+  string publicAddress = 4;
+  int32 publicPort = 5;
 }
 
 enum RequestType {

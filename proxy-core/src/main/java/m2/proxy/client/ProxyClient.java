@@ -5,7 +5,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import m2.proxy.common.*;
 import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Http;
-import m2.proxy.proto.MessageOuterClass.Logon;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.TcpBaseClientBase;
@@ -43,12 +42,13 @@ public class ProxyClient extends TcpBaseClientBase implements Service {
         this.directForward.setService( this );
         this.localForward.setService( this );
         this.clientSite = new ClientSite( this, sitePort, directForward, localForward );
+        this.clientSite.getMetrics().setId( clientId );
     }
 
     @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
         return false;
     }
-    @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+    @Override protected Optional<String> onSetAccess(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
         return Optional.of("test");
     }
     @Override
@@ -127,7 +127,7 @@ public class ProxyClient extends TcpBaseClientBase implements Service {
         super.onStart();
         log.info( "Proxy clientId {}, start on site port: {}, proxy port: {}:{}",
                 getClientId(),
-                clientSite.getSitePort() , getServerAddr(),getServerPort() );
+                clientSite.getSitePort() , getServerAddress(),getServerPort() );
         clientSite.start();
     }
 
@@ -136,13 +136,14 @@ public class ProxyClient extends TcpBaseClientBase implements Service {
         super.onStop();
         log.info( "Proxy clientId {}, stopped", getClientId() );
         clientSite.stop();
+        clientSite.getMetrics().printLog();
     }
 
     @Override
     protected void execute() {
         while (isRunning()) {
+            clientSite.getMetrics().printLog();
             waitfor( 10000 );
-            getClients().values().forEach( s -> s.getHandler().printWork() );
         }
     }
 

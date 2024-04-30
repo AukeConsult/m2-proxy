@@ -34,7 +34,7 @@ public class ServerIntegrationTest {
         @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
             return true;
         }
-        @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+        @Override protected Optional<String> onSetAccess(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
             return Optional.of(getClientId()+"Key");
         }
         @Override

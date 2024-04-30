@@ -39,7 +39,7 @@ public class ServerSite {
         list.append( "<tr>" );
         server.getRemoteForward().getActiveClients().forEach( (k,v) -> {
             list.append( "<td>" ).append( v.getClientId() ).append( "/td>" )
-                    .append( "<td>").append( v.getRemoteAddress() ).append("/td>" )
+                    .append( "<td>").append( v.getRemotePublicAddress() ).append("/td>" )
                     .append( "<td>").append( v.getRemoteLocalAddress() ).append("/td>" )
                     .append( "<td>").append( v.getRemoteLocalPort() ).append("/td>" );
         });

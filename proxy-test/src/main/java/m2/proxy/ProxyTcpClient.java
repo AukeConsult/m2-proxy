@@ -58,12 +58,14 @@ public class ProxyTcpClient {
 
 
         proxyTcpClient = new TcpBaseClientBase( clientId, serverAddr, serverPort, localAddress ) {
-            @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
+
+            @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
                 return true;
             }
-            @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+            @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
                 return Optional.of(clientId+"key");
             }
+
             @Override public ConnectionHandler setConnectionHandler() {
 
                 log.info( "set client handler" );

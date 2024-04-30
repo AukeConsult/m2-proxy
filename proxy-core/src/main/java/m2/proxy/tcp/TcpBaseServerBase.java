@@ -1,7 +1,5 @@
 package m2.proxy.tcp;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.bootstrap.ServerBootstrap;
@@ -19,10 +17,7 @@ import m2.proxy.tcp.handlers.MessageDecoder;
 import m2.proxy.tcp.handlers.SessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rawhttp.core.RawHttpRequest;
-import rawhttp.core.RawHttpResponse;
 
-import java.io.IOException;
 import java.security.KeyPair;
 import java.util.Map;
 import java.util.Optional;
@@ -162,7 +157,7 @@ public abstract class TcpBaseServerBase extends TcpBase {
 
     @Override
     public final void disConnect(ConnectionHandler handler) {
-        log.info("server disconnect ch: {}, addr: {}", handler.getChannelId(),handler.getRemoteAddress());
+        log.info("server disconnect ch: {}, addr: {}", handler.getChannelId(),handler.getRemotePublicAddress());
         handler.close();
         clients.remove(handler.getChannelId());
     }
@@ -175,10 +170,10 @@ public abstract class TcpBaseServerBase extends TcpBase {
                 , 2, 10, TimeUnit.SECONDS);
     }
 
-    @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
+    @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
         return true;
     }
-    @Override protected Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent) {
+    @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
         return Optional.empty();
     }
 
@@ -188,9 +183,10 @@ public abstract class TcpBaseServerBase extends TcpBase {
         private final EventLoopGroup workerGroup;
         private final String serverAddr;
         private final int serverPort;
+
         public ServerThread(final TcpBaseServerBase server) {
             this.server=server;
-            this.serverAddr=server.serverAddr;
+            this.serverAddr=server.serverAddress;
             this.serverPort=server.serverPort;
             this.bossGroup = new NioEventLoopGroup();
             this.workerGroup = new NioEventLoopGroup();
@@ -277,7 +273,6 @@ public abstract class TcpBaseServerBase extends TcpBase {
     @Override
     public final void onStop() {
         stopServer();
-        getClients().values().forEach(ConnectionHandler::printWork);
         log.info("{} -> Netty server stopped",getClientId());
     }
 
@@ -285,8 +280,6 @@ public abstract class TcpBaseServerBase extends TcpBase {
     final protected void execute() {
         while(isRunning()) {
             waitfor(10000);
-            getClients().values().forEach(ConnectionHandler::printWork);
         }
     }
-
 }

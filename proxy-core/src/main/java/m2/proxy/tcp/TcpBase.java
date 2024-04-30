@@ -1,9 +1,7 @@
 package m2.proxy.tcp;
 
-import com.google.protobuf.ByteString;
 import m2.proxy.executors.ServiceBaseExecutor;
 import m2.proxy.tcp.handlers.ConnectionHandler;
-import m2.proxy.tcp.handlers.SessionHandler;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -12,8 +10,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class TcpBase extends ServiceBaseExecutor {
 
@@ -23,44 +22,56 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         public String clientId;
         public String userId;
         public String accessPath;
-        public String remoteAddress;
+        public String clientAddress;
         public String accessToken;
         public String agent;
         public long expireTime;
     }
 
+    private final AtomicReference<String> publicAddress = new AtomicReference<>();
+    private final AtomicInteger publicPort = new AtomicInteger();
+
+    public String getPublicAddress() { return publicAddress.get(); }
+    public void setPublicAddress(String publicAddress) { this.publicAddress.set(publicAddress); }
+    public AtomicInteger getPublicPort() { return publicPort; }
+    public void setPublicPort(int publicPort) { this.publicPort.set(publicPort); }
+
     private Map<String, Access> accessList = new ConcurrentHashMap<>();
     public Map<String, Access> getAccessList() { return accessList; }
 
-    public boolean checkAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
-        if (onCheckAccess( accessPath, remoteAddress, accessToken, agent )) {
-            return true;
+    public boolean checkAccess(String accessPath, String clientAddress, String accessToken, String agent) {
+        if (onCheckAccess( accessPath, clientAddress, accessToken, agent )) {
+
+
+            return false;
         }
         return false;
     }
     ;
-    public Optional<String> setAccess(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
-        Optional<String> accessPath = onSetAccess( userId, remoteAddress, accessToken, agent );
+    public Optional<String> setAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
+        Optional<String> accessPath = onSetAccess( userId, passWord, clientAddress, accessToken, agent );
         if (accessPath.isPresent()) {
             if (!accessList.containsKey( accessPath.get() )) {
                 Access a = new Access();
+                a.clientId=clientId;
                 a.accessPath = accessPath.get();
                 a.accessToken = accessToken;
                 a.userId = userId;
                 a.expireTime = System.currentTimeMillis() + Duration.ofDays( 30 ).toMillis();
                 a.agent = agent;
-                a.remoteAddress = remoteAddress;
+                a.clientAddress = clientAddress;
                 accessList.put( a.accessPath, a );
             }
         }
         return accessPath;
     }
 
-    protected abstract boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent);
-    protected abstract Optional<String> onSetAccess(String userId, String remoteAddress, String accessToken, String agent);
+    protected abstract boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent);
+    protected abstract Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent);
 
     protected final String clientId;
-    protected final String serverAddr;
+    protected final String serverAddress;
+
     protected final int serverPort;
     protected final KeyPair rsaKey;
     protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
@@ -74,7 +85,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public int getLocalPort() { return localPort; }
     public void setLocalPort(int localPort) { this.localPort = localPort; }
     public KeyPair getRsaKey() { return rsaKey; }
-    public String getServerAddr() { return serverAddr; }
+    public String getServerAddress() { return serverAddress; }
     public int getServerPort() { return serverPort; }
 
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
@@ -82,7 +93,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     private final Executor taskPool;
     public Executor getTaskPool() { return taskPool; }
 
-    public TcpBase(String clientId, String serverAddr, int serverPort, String localAddress, KeyPair rsaKey) {
+    public TcpBase(String clientId, String serverAddress, int serverPort, String localAddress, KeyPair rsaKey) {
 
         if (rsaKey == null) {
             try {
@@ -97,7 +108,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         }
 
         this.clientId = clientId;
-        this.serverAddr = serverAddr == null ? "127.0.0.1" : serverAddr;
+        this.serverAddress = serverAddress == null ? "127.0.0.1" : serverAddress;
         this.serverPort = serverPort;
         //this.localAddress = localAddress==null?Network.localAddress():localAddress;
         this.localAddress = localAddress == null ? "127.0.0.1" : localAddress;
@@ -106,8 +117,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         taskPool = new ThreadPoolExecutor( 10, 50, 10, TimeUnit.SECONDS, tasks );
         rnd.setSeed( System.currentTimeMillis() );
     }
-
-
 
     public abstract ConnectionHandler setConnectionHandler();
     public abstract void connect(ConnectionHandler handler);
