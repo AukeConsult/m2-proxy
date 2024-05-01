@@ -1,4 +1,4 @@
-package m2.proxy.tcp;
+package m2.proxy.tcp.server;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -12,6 +12,7 @@ import m2.proxy.common.TcpException;
 import m2.proxy.proto.MessageOuterClass;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.server.RemoteAccess;
+import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.MessageDecoder;
 import m2.proxy.tcp.handlers.SessionHandler;
@@ -62,7 +63,7 @@ public abstract class TcpServer extends TcpBase {
         }
     }
 
-    protected Optional<String> logon (
+    public Optional<String> logon(
             String remoteClient,
             String remoteAddress,
             String userId,

@@ -1,5 +1,6 @@
-package m2.proxy.tcp;
+package m2.proxy.tcp.client;
 
+import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +16,8 @@ public abstract class TcpClient extends TcpBase {
     private static final Logger log = LoggerFactory.getLogger( TcpClient.class );
     private static final long RESTART_WAIT = 2000;
 
-    private final Map<String, TcpClientServerWorker> tcpServers = new ConcurrentHashMap<>();
-    public Map<String, TcpClientServerWorker> getTcpServers() { return tcpServers; }
+    private final Map<String, TcpClientServer> tcpServers = new ConcurrentHashMap<>();
+    public Map<String, TcpClientServer> getTcpServers() { return tcpServers; }
 
     public boolean isConnected() {
         AtomicBoolean ready = new AtomicBoolean( false );
@@ -65,10 +66,10 @@ public abstract class TcpClient extends TcpBase {
                 getTcpServers().remove( key );
 
                 log.info( "{} -> Client reconnect: {}:{}", getMyId(), this.myAddress, this.myPort );
-                TcpClientServerWorker tcpClientServerWorker = new TcpClientServerWorker( this, this.myAddress, this.myPort );
-                tcpClientServerWorker.running.set( true );
-                getExecutor().execute( tcpClientServerWorker );
-                getTcpServers().put( key, tcpClientServerWorker );
+                TcpClientServer tcpClientServer = new TcpClientServer( this, this.myAddress, this.myPort );
+                tcpClientServer.running.set( true );
+                getExecutor().execute( tcpClientServer );
+                getTcpServers().put( key, tcpClientServer );
             } catch (InterruptedException ignored) {
             }
         } );
@@ -92,10 +93,10 @@ public abstract class TcpClient extends TcpBase {
                     getTcpServers().remove( key );
                 }
             }
-            TcpClientServerWorker tcpClientServerWorker = new TcpClientServerWorker( this, this.myAddress, this.myPort );
-            tcpClientServerWorker.running.set( true );
-            getExecutor().execute( tcpClientServerWorker );
-            getTcpServers().put( key, tcpClientServerWorker );
+            TcpClientServer tcpClientServer = new TcpClientServer( this, this.myAddress, this.myPort );
+            tcpClientServer.running.set( true );
+            getExecutor().execute( tcpClientServer );
+            getTcpServers().put( key, tcpClientServer );
         } );
 
     }

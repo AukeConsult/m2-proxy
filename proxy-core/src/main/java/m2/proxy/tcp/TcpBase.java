@@ -119,12 +119,11 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public abstract ConnectionHandler setConnectionHandler();
     public abstract void connect(ConnectionHandler handler);
     public abstract void disConnect(ConnectionHandler handler);
-    abstract void onStart();
-    abstract void onStop();
+    public abstract void onStart();
+    public abstract void onStop();
 
     @Override final protected boolean open() { return true; }
-    @Override
-    protected void startServices() { onStart(); }
+    @Override protected void startServices() { onStart(); }
     @Override final protected void close() { onStop(); }
     @Override final protected void forceClose() { }
 }

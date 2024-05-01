@@ -6,6 +6,7 @@ import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.MessageType;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.handlers.ConnectionHandler;
+import m2.proxy.tcp.server.TcpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ServerStartStopTest {
-    private static final Logger log = LoggerFactory.getLogger( ServerStartStopTest.class );
+public class BasicCommunicateTest {
+    private static final Logger log = LoggerFactory.getLogger( BasicCommunicateTest.class );
 
     final TcpServer tcpServer;
     public AtomicLong outBytes = new AtomicLong();
@@ -37,7 +38,7 @@ public class ServerStartStopTest {
 
     final Random rnd = new Random();
 
-    public static class TcpClient extends m2.proxy.tcp.TcpClient {
+    public static class TcpClient extends m2.proxy.tcp.client.TcpClient {
         private static final Logger log = LoggerFactory.getLogger( TcpClient.class );
 
         public AtomicLong outBytes = new AtomicLong();
@@ -98,7 +99,7 @@ public class ServerStartStopTest {
 
     }
 
-    public ServerStartStopTest() throws NoSuchAlgorithmException {
+    public BasicCommunicateTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
         generator.initialize( 2048 );
         KeyPair rsaKey = generator.generateKeyPair();
@@ -187,6 +188,38 @@ public class ServerStartStopTest {
     }
 
     @Test
+    void one_client_big_raws_messages() throws InterruptedException {
+
+        log.info( "one_client_big_messages" );
+
+        TcpClient client1 = new TcpClient( "leif1", 4000, "" );
+        client1.startWaitConnect(Duration.ofSeconds( 30 ));
+        assertTrue(client1.isRunning() && client1.isConnected());
+
+        long start = System.currentTimeMillis();
+        while(System.currentTimeMillis()-start<10000) {
+            byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
+            rnd.nextBytes( bytes );
+            client1.getTcpServers().forEach( (k, s) -> s.sendRawMessage( bytes ) );
+            Thread.sleep( 1 );
+        }
+        Thread.sleep( 1000 );
+        client1.stop();
+
+        log.info( "{} -> Bytes out: {}, in: {}", client1.getMyId(), client1.outBytes.get(),client1.inBytes.get());
+        log.info( "{} -> Messages out: {}, in: {}", client1.getMyId(), client1.outMessages.get(),client1.inMessages.get());
+
+        log.info( "Server -> Bytes, in: {}, out: {}", inBytes.get(),outBytes.get());
+        log.info( "Server -> Messages, in: {}, out: {}", inMessages.get(),outMessages.get());
+
+        assertEquals(client1.outMessages.get(),client1.inMessages.get());
+
+        assertTrue(client1.inBytes.get()>0 && client1.outBytes.get()>0);
+        assertEquals(client1.outBytes.get(),client1.inBytes.get());
+
+    }
+
+    @Test
     void one_client_big_messages() throws InterruptedException {
 
         log.info( "one_client_big_messages" );
@@ -199,7 +232,7 @@ public class ServerStartStopTest {
         while(System.currentTimeMillis()-start<10000) {
             byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
             rnd.nextBytes( bytes );
-            client1.getTcpServers().forEach( (k, s) -> s.getHandler().sendRawMessage( bytes ) );
+            client1.getTcpServers().forEach( (k, s) -> s.sendMessage( new String(bytes) ) );
             Thread.sleep( 1 );
         }
         Thread.sleep( 1000 );
@@ -236,10 +269,20 @@ public class ServerStartStopTest {
         assertTrue(client1.isReady());
         assertTrue(client2.isReady());
         assertTrue(client3.isReady());
+
+        assertTrue(client1.isRunning() && client1.isConnected());
         assertTrue(client2.isRunning() && client2.isConnected());
         assertTrue(client3.isRunning() && client3.isConnected());
 
-        Thread.sleep( 1000 * 10 );
+        long start = System.currentTimeMillis();
+        while(System.currentTimeMillis()-start<10000) {
+            byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
+            rnd.nextBytes( bytes );
+            client1.getTcpServers().get(0).sendRawMessage( bytes );
+            Thread.sleep( 1 );
+        }
+        Thread.sleep( 1000 );
+
         client1.stop();
         client2.stop();
         client3.stop();

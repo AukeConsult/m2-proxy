@@ -1,4 +1,4 @@
-package m2.proxy.tcp;
+package m2.proxy.tcp.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.bootstrap.Bootstrap;
@@ -15,14 +15,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-public class TcpClientServerWorker extends ConnectionWorker {
-    private static final Logger log = LoggerFactory.getLogger( TcpClientServerWorker.class );
+public class TcpClientServer extends ConnectionWorker {
+    private static final Logger log = LoggerFactory.getLogger( TcpClientServer.class );
 
     private final TcpClient tcpClient;
     private final EventLoopGroup bossGroup;
     private final String myAddress;
     private final int myPort;
     private final AtomicReference<ConnectionHandler> connectionHandler = new AtomicReference<>();
+
 
     public ConnectionHandler getHandler() {
         if (connectionHandler.get() == null) {
@@ -33,7 +34,11 @@ public class TcpClientServerWorker extends ConnectionWorker {
         return connectionHandler.get();
     }
 
-    public TcpClientServerWorker(final TcpClient tcpClient, String myAddress, int myPort) {
+    // sending to server
+    public boolean sendMessage(String message) { return getHandler().sendMessage(message); }
+    public boolean sendRawMessage(byte[] bytes) { return getHandler().sendRawMessage(bytes); }
+
+    public TcpClientServer(final TcpClient tcpClient, String myAddress, int myPort) {
         this.tcpClient = tcpClient;
         this.myAddress = myAddress;
         this.myPort = myPort;

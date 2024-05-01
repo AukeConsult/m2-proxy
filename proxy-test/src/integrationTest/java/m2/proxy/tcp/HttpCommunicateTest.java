@@ -5,8 +5,10 @@ import m2.proxy.common.TcpException;
 import m2.proxy.proto.MessageOuterClass.MessageType;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
+import m2.proxy.tcp.client.TcpClient;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.handlers.SessionHandler;
+import m2.proxy.tcp.server.TcpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,12 +26,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ServerHandlerTest {
-    private static final Logger log = LoggerFactory.getLogger( ServerHandlerTest.class );
+public class HttpCommunicateTest {
+    private static final Logger log = LoggerFactory.getLogger( HttpCommunicateTest.class );
 
     final TcpServer server;
 
-    public ServerHandlerTest() throws NoSuchAlgorithmException {
+    public HttpCommunicateTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
         generator.initialize( 2048 );
         KeyPair rsaKey = generator.generateKeyPair();
@@ -66,7 +68,7 @@ public class ServerHandlerTest {
     }
 
     public static class Client extends TcpClient {
-        private static final Logger log = LoggerFactory.getLogger( ServerStartStopTest.TcpClient.class );
+        private static final Logger log = LoggerFactory.getLogger( BasicCommunicateTest.TcpClient.class );
 
         public Client(String clientId, int ServerPort, String localport) {
             super( clientId, "127.0.0.1", ServerPort, localport );
