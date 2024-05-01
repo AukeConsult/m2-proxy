@@ -17,6 +17,7 @@ public class ProxyTcpServer {
 
     void run(String[] args) {
 
+        log.info("start");
         int serverPort = 9001;
         String localAddress = null;
 

@@ -183,5 +183,5 @@ public class RemoteForward extends TcpServer implements Service {
     @Override
     public Service getService() { return service; }
     @Override
-    public void setService(Service service) { }
+    public void setService(Service service) { this.service = service; }
 }

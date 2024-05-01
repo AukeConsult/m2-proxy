@@ -36,7 +36,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public AtomicInteger getPublicPort() { return publicPort; }
     public void setPublicPort(int publicPort) { this.publicPort.set(publicPort); }
 
-    private Map<String, Access> accessList = new ConcurrentHashMap<>();
+    private final Map<String, Access> accessList = new ConcurrentHashMap<>();
     public Map<String, Access> getAccessList() { return accessList; }
 
     public boolean checkAccess(String accessPath, String clientAddress, String accessToken, String agent) {
@@ -45,7 +45,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         }
         return false;
     }
-    ;
+
     public Optional<String> setAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
         Optional<String> accessPath = onSetAccess( userId, passWord, clientAddress, accessToken, agent );
         if (accessPath.isPresent()) {

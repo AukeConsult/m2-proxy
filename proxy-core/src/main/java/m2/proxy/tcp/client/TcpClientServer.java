@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+@SuppressWarnings( { "UnusedReturnValue", "NullableProblems" } )
 public class TcpClientServer extends ConnectionWorker {
     private static final Logger log = LoggerFactory.getLogger( TcpClientServer.class );
 

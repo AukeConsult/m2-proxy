@@ -54,7 +54,7 @@ public class BasicCommunicateTest {
             return true;
         }
         @Override protected Optional<String> onSetAccess(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
-            return Optional.of( getMyId()+"Key");
+            return Optional.of( getMyId() + "Key" );
         }
         @Override
         public ConnectionHandler setConnectionHandler() {
@@ -63,14 +63,14 @@ public class BasicCommunicateTest {
             return new ConnectionHandler() {
                 @Override protected void onMessageIn(Message m) {
                     //log.info( "from {} -> {}", getRemoteClientId(),m.getType() );
-                    if(m.getType() == MessageType.RAW_MESSAGE) {
+                    if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                         inMessages.incrementAndGet();
                         inBytes.addAndGet( m.getSubMessage().toByteArray().length );
                     }
                 }
                 @Override protected void onMessageOut(Message m) {
                     //log.info( "to {} -> {}", getRemoteClientId(),m.getType() );
-                    if(m.getType() == MessageType.RAW_MESSAGE) {
+                    if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                         outMessages.incrementAndGet();
                         outBytes.addAndGet( m.getSubMessage().toByteArray().length );
                     }
@@ -88,7 +88,7 @@ public class BasicCommunicateTest {
                                     requestId,
                                     RequestType.NONE,
                                     null
-                                 );
+                            );
                         }
                     } catch (InterruptedException e) {
                         throw new RuntimeException( e );
@@ -96,7 +96,6 @@ public class BasicCommunicateTest {
                 }
             };
         }
-
     }
 
     public BasicCommunicateTest() throws NoSuchAlgorithmException {
@@ -109,7 +108,7 @@ public class BasicCommunicateTest {
                 return new ConnectionHandler() {
                     @Override protected void onMessageIn(Message m) {
                         //log.info( "from {} -> {}", getRemoteClientId(),m.getType() );
-                        if(m.getType()== MessageType.RAW_MESSAGE) {
+                        if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                             inMessages.incrementAndGet();
                             inBytes.addAndGet( m.getSubMessage().toByteArray().length );
                             sendRawMessage( m.getSubMessage().toByteArray() );
@@ -117,11 +116,11 @@ public class BasicCommunicateTest {
                     }
                     @Override protected void onMessageOut(Message m) {
                         //log.info( "to {} -> {}", getRemoteClientId(),m.getType() );
-                        if(m.getType()== MessageType.RAW_MESSAGE) {
+                        if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                             outMessages.incrementAndGet();
                             outBytes.addAndGet( m.getSubMessage().toByteArray().length );
-                            if(inMessages.get()!=outMessages.get()) {
-                                log.info( "ERROR out", getRemoteClientId(),m.getType() );
+                            if (inMessages.get() != outMessages.get()) {
+                                log.info( "{} -> ERROR out {}", getRemoteClientId(), m.getType() );
                             }
                         }
                     }
@@ -131,15 +130,14 @@ public class BasicCommunicateTest {
                 };
             }
         };
-
     }
 
     @BeforeEach
     void init() {
-        outBytes.set(0);
-        inBytes.set(0);
-        outMessages.set(0);
-        inMessages.set(0);
+        outBytes.set( 0 );
+        inBytes.set( 0 );
+        outMessages.set( 0 );
+        inMessages.set( 0 );
         tcpServer.start();
     }
 
@@ -154,7 +152,6 @@ public class BasicCommunicateTest {
         Thread.sleep( 1000 * 10 );
         tcpServer.start();
         Thread.sleep( 1000 * 10 );
-
     }
 
     @Test
@@ -173,18 +170,16 @@ public class BasicCommunicateTest {
         Thread.sleep( 1000 * 30 );
         client1.stop();
         Thread.sleep( 1000 * 30 );
-
     }
 
     @Test
     void one_client() throws InterruptedException {
 
         TcpClient client1 = new TcpClient( "leif1", 4000, "" );
-        client1.startWaitConnect(Duration.ofSeconds( 30 ));
-        assertTrue(client1.isRunning() && client1.isConnected());
+        client1.startWaitConnect( Duration.ofSeconds( 30 ) );
+        assertTrue( client1.isRunning() && client1.isConnected() );
         Thread.sleep( 1000 * 15 );
         client1.stop();
-
     }
 
     @Test
@@ -193,11 +188,11 @@ public class BasicCommunicateTest {
         log.info( "one_client_big_messages" );
 
         TcpClient client1 = new TcpClient( "leif1", 4000, "" );
-        client1.startWaitConnect(Duration.ofSeconds( 30 ));
-        assertTrue(client1.isRunning() && client1.isConnected());
+        client1.startWaitConnect( Duration.ofSeconds( 30 ) );
+        assertTrue( client1.isRunning() && client1.isConnected() );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<10000) {
+        while (System.currentTimeMillis() - start < 10000) {
             byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
             rnd.nextBytes( bytes );
             client1.getTcpServers().forEach( (k, s) -> s.sendRawMessage( bytes ) );
@@ -206,17 +201,16 @@ public class BasicCommunicateTest {
         Thread.sleep( 1000 );
         client1.stop();
 
-        log.info( "{} -> Bytes out: {}, in: {}", client1.getMyId(), client1.outBytes.get(),client1.inBytes.get());
-        log.info( "{} -> Messages out: {}, in: {}", client1.getMyId(), client1.outMessages.get(),client1.inMessages.get());
+        log.info( "{} -> Bytes out: {}, in: {}", client1.getMyId(), client1.outBytes.get(), client1.inBytes.get() );
+        log.info( "{} -> Messages out: {}, in: {}", client1.getMyId(), client1.outMessages.get(), client1.inMessages.get() );
 
-        log.info( "Server -> Bytes, in: {}, out: {}", inBytes.get(),outBytes.get());
-        log.info( "Server -> Messages, in: {}, out: {}", inMessages.get(),outMessages.get());
+        log.info( "Server -> Bytes, in: {}, out: {}", inBytes.get(), outBytes.get() );
+        log.info( "Server -> Messages, in: {}, out: {}", inMessages.get(), outMessages.get() );
 
-        assertEquals(client1.outMessages.get(),client1.inMessages.get());
+        assertEquals( client1.outMessages.get(), client1.inMessages.get() );
 
-        assertTrue(client1.inBytes.get()>0 && client1.outBytes.get()>0);
-        assertEquals(client1.outBytes.get(),client1.inBytes.get());
-
+        assertTrue( client1.inBytes.get() > 0 && client1.outBytes.get() > 0 );
+        assertEquals( client1.outBytes.get(), client1.inBytes.get() );
     }
 
     @Test
@@ -225,30 +219,29 @@ public class BasicCommunicateTest {
         log.info( "one_client_big_messages" );
 
         TcpClient client1 = new TcpClient( "leif1", 4000, "" );
-        client1.startWaitConnect(Duration.ofSeconds( 30 ));
-        assertTrue(client1.isRunning() && client1.isConnected());
+        client1.startWaitConnect( Duration.ofSeconds( 30 ) );
+        assertTrue( client1.isRunning() && client1.isConnected() );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<10000) {
+        while (System.currentTimeMillis() - start < 10000) {
             byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
             rnd.nextBytes( bytes );
-            client1.getTcpServers().forEach( (k, s) -> s.sendMessage( new String(bytes) ) );
+            client1.getTcpServers().forEach( (k, s) -> s.sendMessage( new String( bytes ) ) );
             Thread.sleep( 1 );
         }
         Thread.sleep( 1000 );
         client1.stop();
 
-        log.info( "{} -> Bytes out: {}, in: {}", client1.getMyId(), client1.outBytes.get(),client1.inBytes.get());
-        log.info( "{} -> Messages out: {}, in: {}", client1.getMyId(), client1.outMessages.get(),client1.inMessages.get());
+        log.info( "{} -> Bytes out: {}, in: {}", client1.getMyId(), client1.outBytes.get(), client1.inBytes.get() );
+        log.info( "{} -> Messages out: {}, in: {}", client1.getMyId(), client1.outMessages.get(), client1.inMessages.get() );
 
-        log.info( "Server -> Bytes, in: {}, out: {}", inBytes.get(),outBytes.get());
-        log.info( "Server -> Messages, in: {}, out: {}", inMessages.get(),outMessages.get());
+        log.info( "Server -> Bytes, in: {}, out: {}", inBytes.get(), outBytes.get() );
+        log.info( "Server -> Messages, in: {}, out: {}", inMessages.get(), outMessages.get() );
 
-        assertEquals(client1.outMessages.get(),client1.inMessages.get());
+        assertEquals( client1.outMessages.get(), client1.inMessages.get() );
 
-        assertTrue(client1.inBytes.get()>0 && client1.outBytes.get()>0);
-        assertEquals(client1.outBytes.get(),client1.inBytes.get());
-
+        assertTrue( client1.inBytes.get() > 0 && client1.outBytes.get() > 0 );
+        assertEquals( client1.outBytes.get(), client1.inBytes.get() );
     }
 
     @Test
@@ -266,19 +259,19 @@ public class BasicCommunicateTest {
 
         log.info( "many_clients started" );
 
-        assertTrue(client1.isReady());
-        assertTrue(client2.isReady());
-        assertTrue(client3.isReady());
+        assertTrue( client1.isReady() );
+        assertTrue( client2.isReady() );
+        assertTrue( client3.isReady() );
 
-        assertTrue(client1.isRunning() && client1.isConnected());
-        assertTrue(client2.isRunning() && client2.isConnected());
-        assertTrue(client3.isRunning() && client3.isConnected());
+        assertTrue( client1.isRunning() && client1.isConnected() );
+        assertTrue( client2.isRunning() && client2.isConnected() );
+        assertTrue( client3.isRunning() && client3.isConnected() );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<10000) {
+        while (System.currentTimeMillis() - start < 10000) {
             byte[] bytes = new byte[ rnd.nextInt( 200000 ) + 2000 ];
             rnd.nextBytes( bytes );
-            client1.getTcpServers().get(0).sendRawMessage( bytes );
+            client1.getTcpServers().get( 0 ).sendRawMessage( bytes );
             Thread.sleep( 1 );
         }
         Thread.sleep( 1000 );
@@ -287,18 +280,17 @@ public class BasicCommunicateTest {
         client2.stop();
         client3.stop();
 
-        log.info( "client 1, out: {}, in: {}", client1.outBytes.get(),client1.inBytes.get());
-        log.info( "client 2, out: {}, in: {}", client2.outBytes.get(),client2.inBytes.get());
-        log.info( "client 3, out: {}, in: {}", client3.outBytes.get(),client3.inBytes.get());
+        log.info( "client 1, out: {}, in: {}", client1.outBytes.get(), client1.inBytes.get() );
+        log.info( "client 2, out: {}, in: {}", client2.outBytes.get(), client2.inBytes.get() );
+        log.info( "client 3, out: {}, in: {}", client3.outBytes.get(), client3.inBytes.get() );
 
-        assertTrue(client1.inBytes.get()>0 && client1.outBytes.get()>0);
-        assertTrue(client2.inBytes.get()>0 && client2.outBytes.get()>0);
-        assertTrue(client3.inBytes.get()>0 && client3.outBytes.get()>0);
+        assertTrue( client1.inBytes.get() > 0 && client1.outBytes.get() > 0 );
+        assertTrue( client2.inBytes.get() > 0 && client2.outBytes.get() > 0 );
+        assertTrue( client3.inBytes.get() > 0 && client3.outBytes.get() > 0 );
 
-        assertEquals(client1.inBytes.get(),client1.outBytes.get());
-        assertEquals(client2.inBytes.get(),client2.outBytes.get());
-        assertEquals(client3.inBytes.get(),client3.outBytes.get());
-
+        assertEquals( client1.inBytes.get(), client1.outBytes.get() );
+        assertEquals( client2.inBytes.get(), client2.outBytes.get() );
+        assertEquals( client3.inBytes.get(), client3.outBytes.get() );
     }
 
     public static class RandomClient extends TcpClient {
@@ -342,11 +334,9 @@ public class BasicCommunicateTest {
             c.start();
         }
         Thread.sleep( 1000 * 30 );
-        tcpClients.forEach( c -> log.info("{} -> in: {}, out: {}",c.myId,c.inBytes.get(),c.outBytes.get()) );
+        tcpClients.forEach( c -> log.info( "{} -> in: {}, out: {}", c.myId, c.inBytes.get(), c.outBytes.get() ) );
 
-        tcpClients.forEach( c -> assertEquals(c.inBytes.get(),c.outBytes.get()) );
+        tcpClients.forEach( c -> assertEquals( c.inBytes.get(), c.outBytes.get() ) );
         tcpClients.forEach( ServiceBaseExecutor::stop );
-
     }
-
 }
