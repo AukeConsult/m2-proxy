@@ -40,14 +40,12 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
     public void start(Duration wait)  {
         long start = System.currentTimeMillis();
         new Thread( () -> start() ).start();
-
-        while (!isRunning() && System.currentTimeMillis() - start < wait.toMillis()) {
+        while (!isRunning()) {
             try {
                 Thread.sleep( 100 );
             } catch (InterruptedException ignored) {
             }
         }
-
     }
 
     @Override

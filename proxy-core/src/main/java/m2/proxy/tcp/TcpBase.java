@@ -41,8 +41,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public boolean checkAccess(String accessPath, String clientAddress, String accessToken, String agent) {
         if (onCheckAccess( accessPath, clientAddress, accessToken, agent )) {
-
-
             return false;
         }
         return false;
@@ -53,7 +51,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         if (accessPath.isPresent()) {
             if (!accessList.containsKey( accessPath.get() )) {
                 Access a = new Access();
-                a.clientId=clientId;
+                a.clientId= myId;
                 a.accessPath = accessPath.get();
                 a.accessToken = accessToken;
                 a.userId = userId;
@@ -69,31 +67,31 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected abstract boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent);
     protected abstract Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent);
 
-    protected final String clientId;
-    protected final String serverAddress;
+    protected final String myId;
+    protected final String myAddress;
+    protected final int myPort;
+    public String getMyAddress() { return myAddress; }
+    public int getMyPort() { return myPort; }
+    public String getMyId() { return myId; }
 
-    protected final int serverPort;
     protected final KeyPair rsaKey;
     protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
 
     private String localAddress;
     private int localPort;
 
-    public String getClientId() { return clientId; }
     public String getLocalAddress() { return localAddress; }
     public void setLocalAddress(String localAddress) { this.localAddress = localAddress; }
     public int getLocalPort() { return localPort; }
     public void setLocalPort(int localPort) { this.localPort = localPort; }
     public KeyPair getRsaKey() { return rsaKey; }
-    public String getServerAddress() { return serverAddress; }
-    public int getServerPort() { return serverPort; }
 
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
     private final Executor taskPool;
     public Executor getTaskPool() { return taskPool; }
 
-    public TcpBase(String clientId, String serverAddress, int serverPort, String localAddress, KeyPair rsaKey) {
+    public TcpBase(String myId, String myAddress, int myPort, String localAddress, KeyPair rsaKey) {
 
         if (rsaKey == null) {
             try {
@@ -107,9 +105,9 @@ public abstract class TcpBase extends ServiceBaseExecutor {
             this.rsaKey = rsaKey;
         }
 
-        this.clientId = clientId;
-        this.serverAddress = serverAddress == null ? "127.0.0.1" : serverAddress;
-        this.serverPort = serverPort;
+        this.myId = myId;
+        this.myAddress = myAddress == null ? "127.0.0.1" : myAddress;
+        this.myPort = myPort;
         //this.localAddress = localAddress==null?Network.localAddress():localAddress;
         this.localAddress = localAddress == null ? "127.0.0.1" : localAddress;
 

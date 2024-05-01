@@ -3,7 +3,7 @@ package m2.proxy;
 import com.google.protobuf.ByteString;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
-import m2.proxy.tcp.TcpBaseClientBase;
+import m2.proxy.tcp.TcpClient;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ public class ProxyTcpClient {
     private static final Logger log = LoggerFactory.getLogger( ProxyTcpClient.class );
     static ProxyTcpClient app;
 
-    TcpBaseClientBase proxyTcpClient;
+    TcpClient proxyTcpClient;
 
     void run(String[] args) {
 
@@ -57,13 +57,13 @@ public class ProxyTcpClient {
         //serverAddr = serverAddr==null?Network.localAddress():serverAddr;
 
 
-        proxyTcpClient = new TcpBaseClientBase( clientId, serverAddr, serverPort, localAddress ) {
+        proxyTcpClient = new TcpClient( clientId, serverAddr, serverPort, localAddress ) {
 
             @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
                 return true;
             }
             @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
-                return Optional.of(clientId+"key");
+                return Optional.of( myId +"key");
             }
 
             @Override public ConnectionHandler setConnectionHandler() {

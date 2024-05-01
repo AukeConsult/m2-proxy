@@ -38,14 +38,14 @@ public class ServerSite {
         StringBuilder list = new StringBuilder();
         list.append( "<tr>" );
         server.getRemoteForward().getActiveClients().forEach( (k,v) -> {
-            list.append( "<td>" ).append( v.getClientId() ).append( "/td>" )
+            list.append( "<td>" ).append( v.getRemoteClientId() ).append( "/td>" )
                     .append( "<td>").append( v.getRemotePublicAddress() ).append("/td>" )
                     .append( "<td>").append( v.getRemoteLocalAddress() ).append("/td>" )
                     .append( "<td>").append( v.getRemoteLocalPort() ).append("/td>" );
         });
         list.append( "</tr>" );
 
-        page = page.replace( "#ACTIVE", String.valueOf(  server.getRemoteForward().getClients().size() ))
+        page = page.replace( "#ACTIVE", String.valueOf(  server.getRemoteForward().getClientHandles().size() ))
                 .replace("#CLIENTLIST",list.toString());
 
         return Optional.of(new ContentResult( page ));

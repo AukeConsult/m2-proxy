@@ -23,29 +23,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
-public abstract class TcpBaseServerBase extends TcpBase {
+public abstract class TcpServer extends TcpBase {
 
-    private static final Logger log = LoggerFactory.getLogger(TcpBaseServerBase.class);
+    private static final Logger log = LoggerFactory.getLogger( TcpServer.class);
 
-    private final Map<String, ConnectionHandler> clients = new ConcurrentHashMap<>();
-    public Map<String, ConnectionHandler> getClients() { return clients;}
+    private final Map<String, ConnectionHandler> clientHandles = new ConcurrentHashMap<>();
+    public Map<String, ConnectionHandler> getClientHandles() { return clientHandles;}
 
     private final Map<String, RemoteAccess> access = new ConcurrentHashMap<>();
     public Map<String, RemoteAccess> getAccess() {
         return access;
     }
 
-    public TcpBaseServerBase(int serverPort, String localAddress, KeyPair rsaKey) {
+    public TcpServer(int serverPort, String localAddress, KeyPair rsaKey) {
         super("SERVER",localAddress,serverPort,localAddress,rsaKey);
         setLocalPort(serverPort);
     }
 
     protected Optional<SessionHandler> getSession(String clientId, String remoteAddress) {
 
-        if (getClients().containsKey( clientId ) && getClients().get( clientId ).isOpen()) {
-            ConnectionHandler client = getClients().get( clientId );
+        if (getActiveClients().containsKey( clientId ) && getActiveClients().get( clientId ).isOpen()) {
+            ConnectionHandler client = getActiveClients().get( clientId );
             long sessionId = remoteAddress!=null ?
                     UUID.nameUUIDFromBytes(
                             remoteAddress.getBytes()
@@ -54,8 +53,7 @@ public abstract class TcpBaseServerBase extends TcpBase {
             if (!client.getSessions().containsKey( sessionId )) {
                 client.openSession( new SessionHandler( sessionId ) {
                     @Override
-                    public void onReceive(long requestId, ByteString reply) {
-                    }
+                    public void onReceive(long requestId, ByteString reply) { }
                 }, 10000 );
             }
             return Optional.of( client.getSessions().get( sessionId ) );
@@ -84,8 +82,8 @@ public abstract class TcpBaseServerBase extends TcpBase {
                         agent );
 
                 if (accessPath.isPresent()) {
-                    log.warn( "Got accessPath: {}, client: {}", accessPath.get(), remoteClient );
-                    RemoteAccess a = new RemoteAccess( accessPath.get(), getClientId() );
+                    log.info( "Got accessPath: {}, client: {}", accessPath.get(), remoteClient );
+                    RemoteAccess a = new RemoteAccess( accessPath.get(), getMyId() );
                     access.put( a.getAccessPath(), a );
                     return accessPath;
                 } else {
@@ -93,7 +91,7 @@ public abstract class TcpBaseServerBase extends TcpBase {
                     throw new TcpException( ProxyStatus.REJECTED, "cant fond client" );
                 }
             } else {
-                log.warn( "cant find client: {}", remoteClient );
+                log.warn( "{} -> Can not find client: {}", getMyId(), remoteClient );
                 throw new TcpException( ProxyStatus.NOTFOUND, "cant fond client" );
             }
 
@@ -151,23 +149,18 @@ public abstract class TcpBaseServerBase extends TcpBase {
             }
         }
         throw new TcpException( ProxyStatus.REJECTED, "Cant find client: " + remoteClientId );
-
     }
-
 
     @Override
     public final void disConnect(ConnectionHandler handler) {
-        log.info("server disconnect ch: {}, addr: {}", handler.getChannelId(),handler.getRemotePublicAddress());
+        log.debug("server disconnect ch: {}, addr: {}", handler.getChannelId(),handler.getRemotePublicAddress());
         handler.close();
-        clients.remove(handler.getChannelId());
+        clientHandles.remove(handler.getChannelId());
     }
 
     @Override
     public final void connect(ConnectionHandler handler) {
         handler.startPing(2);
-        handler.getCtx().executor().scheduleAtFixedRate(() ->
-                        handler.sendMessage("Hello client: " + System.currentTimeMillis())
-                , 2, 10, TimeUnit.SECONDS);
     }
 
     @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
@@ -178,16 +171,16 @@ public abstract class TcpBaseServerBase extends TcpBase {
     }
 
     private static class ServerThread implements Runnable {
-        private final TcpBaseServerBase server;
+        private final TcpServer server;
         private final EventLoopGroup bossGroup;
         private final EventLoopGroup workerGroup;
         private final String serverAddr;
         private final int serverPort;
 
-        public ServerThread(final TcpBaseServerBase server) {
+        public ServerThread(final TcpServer server) {
             this.server=server;
-            this.serverAddr=server.serverAddress;
-            this.serverPort=server.serverPort;
+            this.serverAddr=server.myAddress;
+            this.serverPort=server.myPort;
             this.bossGroup = new NioEventLoopGroup();
             this.workerGroup = new NioEventLoopGroup();
         }
@@ -195,13 +188,14 @@ public abstract class TcpBaseServerBase extends TcpBase {
         public void stop() {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
-            server.clients.clear();
+            server.clientHandles.clear();
         }
 
         @Override
         public void run() {
-            log.info("Serverthread started");
+
             try {
+
                 ServerBootstrap serverBootstrap = new ServerBootstrap();
                 serverBootstrap.group(bossGroup, workerGroup)
                         .channel(NioServerSocketChannel.class)
@@ -209,42 +203,45 @@ public abstract class TcpBaseServerBase extends TcpBase {
                             @Override
                             protected void initChannel(SocketChannel ch) {
                                 ch.pipeline().addFirst(new MessageDecoder(server));
-                                ch.pipeline().addLast(new SimpleChannelInboundHandler<Message>() {
+                                ch.pipeline().addLast(new SimpleChannelInboundHandler<byte[]>() {
                                     @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
-                                        String channelId = ctx.channel().id().asShortText();
-                                        if(server.getClients().containsKey(channelId)) {
-                                            server.getClients().get(channelId).prosessMessage(msg);
-                                        } else {
-                                            log.warn("{} -> client not open, ch: {}, addr: {}",
-                                                    server.getClientId(),
-                                                    channelId,ctx.channel().remoteAddress().toString());
-                                        }
+                                    protected void channelRead0(ChannelHandlerContext ctx, byte[] bytes) {
+                                        server.getExecutor().execute( () -> {
+                                            try {
+                                                Message msg = Message.parseFrom( bytes );
+                                                String channelId = ctx.channel().id().asShortText();
+                                                if(server.getClientHandles().containsKey(channelId)) {
+                                                    server.getClientHandles().get(channelId).readMessage(msg);
+                                                } else {
+                                                    log.warn("{} -> client not open, ch: {}, addr: {}",
+                                                            server.getMyId(),
+                                                            channelId,ctx.channel().remoteAddress().toString());
+                                                }
+                                            } catch (InvalidProtocolBufferException e) {
+                                                log.error( "error create message from bytes" );
+                                            }
+                                        });
                                     }
                                     @Override
                                     public void channelActive(ChannelHandlerContext ctx) {
                                         final ConnectionHandler handler = server.setConnectionHandler();
-                                        handler.setServer(server);
+                                        handler.setTcpServe(server);
                                         handler.initServer(ctx.channel().id().asShortText(),ctx);
-                                        server.getClients().put(handler.getChannelId(),handler);
+                                        server.getClientHandles().put(handler.getChannelId(),handler);
                                     }
                                 });
                             }
                         })
-                        .option(ChannelOption.SO_BACKLOG, 128)
+                        .option(ChannelOption.SO_BACKLOG, 200)
                         .childOption(ChannelOption.SO_KEEPALIVE, true);
 
                 ChannelFuture f = serverBootstrap.bind(serverAddr,serverPort).sync();
                 f.channel().closeFuture().sync();
                 f.channel().close();
 
-                log.info("Netty server stopped LOOP");
-
             } catch (InterruptedException e) {
-                log.info("stopped",e);
-                //throw new RuntimeException(e);
+                log.info("Stopp error:",e);
             }
-            log.info("Serverthread stopped");
 
         }
     }
@@ -266,14 +263,13 @@ public abstract class TcpBaseServerBase extends TcpBase {
 
     @Override
     public final void onStart() {
-        log.info("{} -> Starting netty server on -> {}:{} ", getClientId(), getLocalAddress(),getLocalPort());
+        log.info("{} -> Starting netty server on -> {}:{} ", getMyId(), getLocalAddress(),getLocalPort());
         startServer ();
     }
 
     @Override
     public final void onStop() {
         stopServer();
-        log.info("{} -> Netty server stopped",getClientId());
     }
 
     @Override

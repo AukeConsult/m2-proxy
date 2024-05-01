@@ -7,7 +7,7 @@ import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Http;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
-import m2.proxy.tcp.TcpBaseClientBase;
+import m2.proxy.tcp.TcpClient;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ import rawhttp.core.RawHttpResponse;
 
 import java.util.Optional;
 
-public class ProxyClient extends TcpBaseClientBase implements Service {
+public class ProxyClient extends TcpClient implements Service {
 
     private static final Logger log = LoggerFactory.getLogger( ProxyClient.class );
 
@@ -64,7 +64,7 @@ public class ProxyClient extends TcpBaseClientBase implements Service {
             @Override protected void onDisonnect(String ClientId, String remoteAddress) {}
             @Override
             protected void onRequest(long sessionId, long requestId, RequestType requestType, String address, ByteString requestBytes) {
-                getServer().getTaskPool().execute( () -> {
+                getTcpServe().getTaskPool().execute( () -> {
 
                     try {
 
@@ -126,15 +126,15 @@ public class ProxyClient extends TcpBaseClientBase implements Service {
     public void onStart() {
         super.onStart();
         log.info( "Proxy clientId {}, start on site port: {}, proxy port: {}:{}",
-                getClientId(),
-                clientSite.getSitePort() , getServerAddress(),getServerPort() );
+                getMyId(),
+                clientSite.getSitePort() , getMyAddress(), getMyPort() );
         clientSite.start();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        log.info( "Proxy clientId {}, stopped", getClientId() );
+        log.info( "Proxy clientId {}, stopped", getMyId() );
         clientSite.stop();
         clientSite.getMetrics().printLog();
     }

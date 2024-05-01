@@ -47,7 +47,7 @@ public abstract class SessionHandler {
                 .setType(MessageType.REQUEST)
                 .setRequest(r)
                 .build();
-        handler.write(m);
+        handler.writeMessage(m);
     }
 
     public Optional<String> logon(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
@@ -56,7 +56,7 @@ public abstract class SessionHandler {
 
             ByteString ret = sendRequest("",
                     Logon.newBuilder()
-                            .setClientId(  getHandler().getClientId().get())
+                            .setClientId(getHandler().getRemoteClientId().get())
                             .setUserId( userId )
                             .setPassWord( passWord )
                             .setRemoteAddress( remoteAddress )

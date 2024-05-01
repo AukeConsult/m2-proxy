@@ -5,13 +5,11 @@ import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import m2.proxy.common.*;
-import m2.proxy.proto.MessageOuterClass.Http;
 import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
-import m2.proxy.tcp.TcpBaseServerBase;
+import m2.proxy.tcp.TcpServer;
 import m2.proxy.tcp.handlers.ConnectionHandler;
-import m2.proxy.tcp.handlers.SessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.RawHttp;
@@ -21,7 +19,7 @@ import rawhttp.core.RawHttpResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-public class RemoteForward extends TcpBaseServerBase implements Service {
+public class RemoteForward extends TcpServer implements Service {
     private static final Logger log = LoggerFactory.getLogger( RemoteForward.class );
 
     private final RawHttp http = new RawHttp();
@@ -39,7 +37,7 @@ public class RemoteForward extends TcpBaseServerBase implements Service {
         try {
 
             String remoteClientId = request.getUri().getPath().replace( "/logon/", "" );
-            log.info( "Logon to client: {}", clientId );
+            log.info( "Logon to client: {}", myId );
 
             String remoteAddress = "";
             if (request.getSenderAddress().isPresent()) {
@@ -66,13 +64,13 @@ public class RemoteForward extends TcpBaseServerBase implements Service {
                         httpHelper.errReply( 200, ProxyStatus.OK, "" )
                 ) );
             } else {
-                log.warn( "Rejected client: {}", clientId );
+                log.warn( "Rejected client: {}", myId );
                 return Optional.of( http.parseResponse(
                         httpHelper.errReply( 403, ProxyStatus.REJECTED, "" )
                 ) );
             }
         } catch (IOException | TcpException e) {
-            log.warn( "Exception client: {}, err: {}", clientId, e.getMessage() );
+            log.warn( "Exception client: {}, err: {}", myId, e.getMessage() );
             return Optional.of( http.parseResponse(
                     httpHelper.errReply( 404, ProxyStatus.FAIL, e.getMessage() )
             ) );
@@ -112,10 +110,10 @@ public class RemoteForward extends TcpBaseServerBase implements Service {
                         try {
                             HttpReply reply = HttpReply.parseFrom( ret.get() );
                             if (reply.getOkLogon()) {
-                                log.warn( "GOT REPLY client: {}", clientId );
+                                log.warn( "GOT REPLY client: {}", myId );
                                 return Optional.of( http.parseResponse( reply.getReply().toStringUtf8() ) );
                             } else {
-                                log.warn( "REJECTED REQUEST client: {}", clientId );
+                                log.warn( "REJECTED REQUEST client: {}", myId );
                                 return Optional.of( http.parseResponse(
                                         httpHelper.errReply( 403, ProxyStatus.REJECTED, "no access" )
                                 ) );
@@ -126,7 +124,7 @@ public class RemoteForward extends TcpBaseServerBase implements Service {
                     }
 
                 } catch (TcpException e) {
-                    log.warn( "client: {}, err: {}", clientId, e.getMessage() );
+                    log.warn( "client: {}, err: {}", myId, e.getMessage() );
                     if(e.getStatus().equals( ProxyStatus.REJECTED )) {
                         return Optional.of(
                                 http.parseResponse(

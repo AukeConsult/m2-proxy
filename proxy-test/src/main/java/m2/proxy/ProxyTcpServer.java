@@ -2,7 +2,7 @@ package m2.proxy;
 
 import com.google.protobuf.ByteString;
 import m2.proxy.proto.MessageOuterClass;
-import m2.proxy.tcp.TcpBaseServerBase;
+import m2.proxy.tcp.TcpServer;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +13,7 @@ public class ProxyTcpServer {
     private static final Logger log = LoggerFactory.getLogger( ProxyTcpServer.class );
     static ProxyTcpServer app;
 
-    TcpBaseServerBase proxyTcpServer;
+    TcpServer proxyTcpServer;
 
     void run(String[] args) {
 
@@ -34,7 +34,7 @@ public class ProxyTcpServer {
             }
         }
 
-        proxyTcpServer = new TcpBaseServerBase( serverPort, localAddress, null ) {
+        proxyTcpServer = new TcpServer( serverPort, localAddress, null ) {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
