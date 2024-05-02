@@ -29,32 +29,32 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
     private final int serverPort;
     private final LocalForward localForward;
     private final DirectForward directForward;
-    private final RemoteForward remoteForward;
+    private final TcpForward tcpForward;
     private final ServerSite serverSite;
 
     public int getServerPort() { return serverPort; }
     public DirectForward getDirectForward() { return directForward; }
-    public RemoteForward getRemoteForward() { return remoteForward; }
+    public TcpForward getRemoteForward() { return tcpForward; }
     public LocalForward getLocalSite() { return localForward; }
 
     public ProxyServer(
             int serverPort,
             DirectForward directForward,
-            RemoteForward remoteForward,
+            TcpForward tcpForward,
             LocalForward localForward
     ) {
 
         this.serverPort = serverPort;
         this.directForward = directForward;
-        this.remoteForward = remoteForward;
+        this.tcpForward = tcpForward;
         this.localForward = localForward;
 
         this.directForward.setService( this );
-        this.remoteForward.setService( this );
+        this.tcpForward.setService( this );
         this.localForward.setService( this );
 
         this.serverSite = new ServerSite( this );
-        this.proxyMetrics.setId( remoteForward.myId() );
+        this.proxyMetrics.setId( tcpForward.myId() );
         this.tcpRawHttpServer = new TcpRawHttpServer( serverPort );
     }
 
@@ -66,7 +66,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
                 // check access keys forward with tcp
                 try {
                     proxyMetrics.transIn.incrementAndGet();
-                    Optional<RawHttpResponse<?>> remote = remoteForward.handleHttp( request );
+                    Optional<RawHttpResponse<?>> remote = tcpForward.handleHttp( request );
                     if (remote.isPresent()) {
                         proxyMetrics.transRemoteOut.incrementAndGet();
                         return remote;

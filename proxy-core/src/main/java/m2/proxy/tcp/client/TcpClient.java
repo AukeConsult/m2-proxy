@@ -13,16 +13,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings( "ALL" )
 public abstract class TcpClient extends TcpBase {
     private static final Logger log = LoggerFactory.getLogger( TcpClient.class );
 
     // parameteres
-    private final AtomicInteger reconnectTime = new AtomicInteger();
-    public int getReconnectTime() { return reconnectTime.get(); }
-    public void setReconnectTimeSeconds(int reconnectTime) { this.reconnectTime.set( reconnectTime * 1000 ); }
 
     private final Map<String, TcpClientWorker> tcpRemoteServers = new ConcurrentHashMap<>();
     public List<TcpClientWorker> getTcpRemoteServers() { return new ArrayList<>(tcpRemoteServers.values()); }
@@ -51,20 +47,15 @@ public abstract class TcpClient extends TcpBase {
     }
     public boolean isReady() { return isRunning() && isConnected(); }
 
-    private void startServerWorkers() {
+    private void startWorker(String workerId) {
+        TcpClientWorker tcpClientWorker = new TcpClientWorker( workerId, this, this.myAddress, this.myPort );
+        getTaskPool().execute( tcpClientWorker );
+        tcpRemoteServers.put( workerId, tcpClientWorker );
+    }
 
+    private void startServerWorkers() {
         final String workerId = this.myAddress + this.myPort;
-        getTaskPool().execute( () -> {
-            if (tcpRemoteServers.containsKey( workerId )) {
-                if (tcpRemoteServers.get( workerId ).running.getAndSet( false )) {
-                    tcpRemoteServers.get( workerId ).disconnect( true );
-                    tcpRemoteServers.remove( workerId );
-                }
-            }
-            TcpClientWorker tcpClientWorker = new TcpClientWorker( workerId, this, this.myAddress, this.myPort );
-            getTaskPool().execute( tcpClientWorker );
-            tcpRemoteServers.put( workerId, tcpClientWorker );
-        } );
+        startWorker(workerId);
     }
 
     public TcpClient(String clientId, String serverAddr, int serverPort, String localAddress) {
@@ -72,37 +63,37 @@ public abstract class TcpClient extends TcpBase {
                 clientId == null ? UUID.randomUUID().toString().substring( 0, 10 ) : clientId,
                 serverAddr, serverPort, localAddress, null
         );
-        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>(100);
-        taskPool = new ThreadPoolExecutor( 10, 50, 30, TimeUnit.SECONDS, tasks );
         setLocalPort( 0 );
     }
 
-    @Override public final void connect(ConnectionHandler handler) {
-
-    }
+    @Override public final void connect(ConnectionHandler handler) { }
 
     @Override public final void doDisconnect(ConnectionHandler handler) {
         // stop everything and notify remote server
-        handler.getConnectionWorker().disconnect( true );
+        handler.getConnectionWorker().stop( true );
     }
 
     @Override public final void onDisconnected(ConnectionHandler handler) {
         // make thread to reconnect
-        getTaskPool().execute( () -> {
+        if(handler.getConnectionWorker().running.get()) {
+            getTaskPool().execute( () -> {
 
-            ConnectionWorker tcpClientWorker = handler.getConnectionWorker();
-            // just stop everything without notify remote server
-            tcpClientWorker.disconnect( false );
+                TcpClientWorker tcpClientWorker = (TcpClientWorker)handler.getConnectionWorker();
+                // just stop everything without notify remote server
+                tcpClientWorker.stop( false );
+                Thread.yield();
 
-            log.info( "{} -> Start server reconnect in: {} ms", myId(), getReconnectTime() );
-            try {
-                Thread.sleep( getReconnectTime() );
-            } catch (InterruptedException ignored) {
-            }
-            log.info( "{} -> Client reconnect: {}:{}", myId(), this.myAddress, this.myPort );
-            getTaskPool().execute( tcpClientWorker );
+                log.info( "{} -> Start server reconnect in: {} ms", myId(), reconnectTime() );
+                try {
+                    Thread.sleep( reconnectTime() );
+                } catch (InterruptedException ignored) {
+                }
+                log.info( "{} -> Client reconnect: {}:{}", myId(), this.myAddress, this.myPort );
+                startWorker( tcpClientWorker.getWorkerId() );
+                Thread.yield();
 
-        } );
+            } );
+        }
     }
 
     @Override public void onStart() {
@@ -112,6 +103,7 @@ public abstract class TcpClient extends TcpBase {
     }
 
     @Override public void onStop() {
+
         tcpRemoteServers
                 .forEach( (k,s) -> {
                     s.getHandler().printWork();
@@ -119,6 +111,15 @@ public abstract class TcpClient extends TcpBase {
                     getActiveClients().remove( s.getHandler().getRemoteClientId() );
                 } );
 
+        AtomicBoolean isrunning=new AtomicBoolean();
+        do {
+            isrunning.set(false);
+            tcpRemoteServers.forEach( (k, s) -> {
+                if(s.running.get()) {
+                    isrunning.set(true);
+                }
+            });
+        } while(isrunning.get());
         tcpRemoteServers.clear();
     }
 

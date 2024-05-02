@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TcpClientWorker extends ConnectionWorker {
     private static final Logger log = LoggerFactory.getLogger( TcpClientWorker.class );
 
-
     private final TcpClient tcpClient;
     private final String workerId;
     private final String myAddress;
@@ -47,20 +46,18 @@ public class TcpClientWorker extends ConnectionWorker {
     public boolean sendMessage(String message) { return getHandler().sendMessage( message ); }
     public boolean sendRawMessage(byte[] bytes) { return getHandler().sendRawMessage( bytes ); }
 
-    private void createBossGroup() {
-        this.bossGroup = new NioEventLoopGroup(2);
-    }
     public TcpClientWorker(final String workerId, final TcpClient tcpClient, String myAddress, int myPort) {
         this.tcpClient = tcpClient;
         this.workerId = workerId;
         this.myAddress = myAddress;
         this.myPort = myPort;
-        createBossGroup();
+        this.bossGroup = new NioEventLoopGroup(2);
     }
 
     @Override
-    public void disconnect(boolean notifyRemote) {
-        if (running.getAndSet( false )) {
+    public void stop(boolean notifyRemote) {
+
+        if (!stopping.getAndSet( true )) {
 
             if (connectionHandler.get() != null) {
                 log.debug( "{} -> tcp client stopped: {}", tcpClient.myId(), connectionHandler.get().getRemoteClientId() );
@@ -70,13 +67,15 @@ public class TcpClientWorker extends ConnectionWorker {
                     connectionHandler.get().disconnect();
                 }
             }
-            if(!bossGroup.isTerminated()) {
-                bossGroup.shutdownGracefully();
-            }
-            createBossGroup();
+            bossGroup.shutdownGracefully();
             // remove connection handler
-            connectionHandler.set(null);
             connected.set(false);
+            while(running.get()) {
+                try {
+                    Thread.sleep( 10 );
+                } catch (InterruptedException e) {
+                }
+            }
         }
     }
 
@@ -84,6 +83,7 @@ public class TcpClientWorker extends ConnectionWorker {
     public void run() {
 
         if (!running.getAndSet( true )) {
+
             log.debug( "{} -> Server thread start", tcpClient.myId() );
             try {
 
@@ -116,7 +116,6 @@ public class TcpClientWorker extends ConnectionWorker {
 
             } catch (InterruptedException e) {
                 log.warn( "{} -> Connect server Interrupt error: {}", tcpClient.myId(), e.getMessage() );
-                connectionErrors.incrementAndGet();
                 tcpClient.onDisconnected( getHandler() );
             } catch (Exception e) {
                 if (e.getCause() != null) {
@@ -124,11 +123,12 @@ public class TcpClientWorker extends ConnectionWorker {
                 } else {
                     log.warn( "{} -> Connect server error: {}", tcpClient.myId(), e.getMessage() );
                 }
-                connectionErrors.incrementAndGet();
                 tcpClient.onDisconnected( getHandler() );
+            } finally {
+                log.debug( "{} -> Server thread stopped", tcpClient.myId() );
+                running.set(false);
+                stopping.set(false);
             }
-            log.debug( "{} -> Server thread stopped", tcpClient.myId() );
-
         }
     }
 }

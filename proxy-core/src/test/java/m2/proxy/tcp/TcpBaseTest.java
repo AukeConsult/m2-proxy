@@ -31,6 +31,6 @@ public class TcpBaseTest {
         TcpBase t = getTcpBase();
         Optional<String> accessKey = t.setAccess( "","","","", "" );
         assertEquals("12345",accessKey.get());
-        assertTrue(t.getAccessList().size()>0);
+        assertTrue(t.getAccessCacheList().size()>0);
     }
 }

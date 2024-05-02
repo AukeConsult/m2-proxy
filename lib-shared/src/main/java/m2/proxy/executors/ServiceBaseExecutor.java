@@ -49,6 +49,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
 
     @Override
     public final void start() {
+
         if(!running.getAndSet(true)) {
 
             stopped.set(false);
@@ -99,7 +100,12 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
                 } catch (InterruptedException ignored) {
                 }
             }
+
             close();
+
+            executor.shutdownNow();
+            executor= null;
+
             log.debug("stopped");
         }
     }

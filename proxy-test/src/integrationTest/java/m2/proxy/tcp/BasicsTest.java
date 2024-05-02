@@ -148,8 +148,10 @@ public class BasicsTest {
         inBytes.set( 0 );
         outMessages.set( 0 );
         inMessages.set( 0 );
+
         tcpServer.start();
         assertTrue( tcpServer.isRunning() );
+
     }
 
     @AfterEach
@@ -172,32 +174,56 @@ public class BasicsTest {
     void server_disconnect() throws InterruptedException {
 
         TcpClient client1 = new TcpClient( "leif", 4000, "" );
-        client1.setReconnectTimeSeconds( 10 );
+        client1.setReconnectTimeSeconds( 5 );
 
         client1.startWaitConnect( Duration.ofSeconds( 2 ) );
         assertTrue( client1.isConnected() );
         assertEquals( 1, client1.getTcpRemoteServers().size() );
-        assertEquals( 1, client1.activeClients.size() );
+        assertEquals( 1, client1.getActiveClients().size() );
 
-        assertEquals( 1, tcpServer.activeClients.size() );
+        assertEquals( 1, tcpServer.getActiveClients().size() );
+
+        Thread.sleep( 1000 * 10 );
+
+        log.info("server stopped");
+
         tcpServer.stop();
-        Thread.sleep( 1000 * 3 );
+        Thread.sleep( 1000 * 5 );
 
-        assertEquals( 0, tcpServer.activeClients.size() );
-        assertEquals( 0, client1.activeClients.size() );
+        assertEquals( 0, tcpServer.getClientHandles().size() );
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+        assertEquals( 0, client1.getActiveClients().size() );
         assertEquals( 1, client1.getTcpRemoteServers().size() );
         assertFalse( client1.isConnected() );
 
         // client try to reconnect
-        Thread.sleep( 1000 * 30 );
-        assertEquals( 0, client1.activeClients.size() );
+        Thread.sleep( 1000 * 15 );
+        assertEquals( 0, client1.getActiveClients().size() );
         assertEquals( 1, client1.getTcpRemoteServers().size() );
+
+        tcpServer.start();
+        Thread.sleep( 1000 * 5 );
+
+        assertEquals( 1, tcpServer.getClientHandles().size() );
+        assertEquals( 1, tcpServer.getActiveClients().size() );
+        assertEquals( 1, client1.getActiveClients().size() );
+        assertEquals( 1, client1.getTcpRemoteServers().size() );
+        assertTrue( client1.isConnected() );
+
+
     }
 
     @Test
     void server_stop_client_try_reconnect() throws InterruptedException {
 
         tcpServer.stop();
+        Thread.sleep( 2 * 1000 );
+        tcpServer.start();
+        Thread.sleep( 2 * 1000 );
+        tcpServer.stop();
+
+        assertEquals( 0, tcpServer.getClientHandles().size() );
+        assertEquals( 0, tcpServer.getActiveClients().size() );
 
         List<TcpClient> clients = new ArrayList<>( Arrays.asList(
                 new TcpClient( "leif1", 4000, "" ),
@@ -216,7 +242,7 @@ public class BasicsTest {
 
             tcpServer.getTaskPool().execute( () -> {
                 final TcpClient client = c;
-                client.setReconnectTimeSeconds( 10 );
+                client.setReconnectTimeSeconds( 5 );
                 assertEquals( 0, client.getTcpRemoteServers().size() );
 
                 client.startWaitConnect( Duration.ofSeconds( 2 ) );
@@ -224,20 +250,22 @@ public class BasicsTest {
                 assertFalse( client.getTcpRemoteServers().get( 0 ).connected.get() );
                 assertFalse( client.isConnected() );
                 assertEquals( 1, client.getTcpRemoteServers().size() );
-                assertEquals( 0, client.activeClients.size() );
+                assertEquals( 0, client.getActiveClients().size() );
             } );
         } );
 
-        Thread.sleep( 30 * 1000 );
+        Thread.sleep( 15 * 1000 );
         clients.forEach( client -> {
-
             assertEquals( 1, client.getTcpRemoteServers().size() );
-            assertEquals( 5, client.getTcpRemoteServers().get( 0 ).connectionErrors.get(), 3 );
             assertFalse( client.getTcpRemoteServers().get( 0 ).connected.get() );
         } );
 
+        assertEquals( 0, tcpServer.getClientHandles().size() );
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+
+        log.info( "start server" );
         tcpServer.start();
-        Thread.sleep( 10 * 1000 );
+        Thread.sleep( 15 * 1000 );
 
         clients.forEach( client -> {
             assertEquals( 1, client.getTcpRemoteServers().size() );
@@ -248,6 +276,7 @@ public class BasicsTest {
         assertEquals( 10, tcpServer.getClientHandles().size() );
         assertEquals( 10, tcpServer.getActiveClients().size() );
 
+        log.info( "stop" );
         tcpServer.stop();
         Thread.sleep( 10 * 1000 );
 
@@ -278,9 +307,10 @@ public class BasicsTest {
 
         client1.stop();
         assertFalse( client1.isConnected() );
-        assertEquals( 0, client1.getTcpRemoteServers().size() );
-        assertEquals( 0, client1.activeClients.size() );
         Thread.sleep( 5 * 1000 );
+
+        assertEquals( 0, client1.getTcpRemoteServers().size() );
+        assertEquals( 0, client1.getActiveClients().size() );
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
 
@@ -297,10 +327,12 @@ public class BasicsTest {
         client1.stop();
         assertFalse( client1.isConnected() );
         assertEquals( 0, client1.getTcpRemoteServers().size() );
-        assertEquals( 0, client1.activeClients.size() );
+        assertEquals( 0, client1.getActiveClients().size() );
         Thread.sleep( 5 * 1000 );
+
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
+
     }
 
     @Test
@@ -309,7 +341,7 @@ public class BasicsTest {
         TcpClient client1 = new TcpClient( "leif1", 4000, "" );
         client1.startWaitConnect( Duration.ofSeconds( 30 ) );
         assertTrue( client1.isRunning() && client1.isConnected() );
-        Thread.sleep( 1000 * 15 );
+        Thread.sleep( 1000 * 10 );
         client1.stop();
     }
 
@@ -471,7 +503,7 @@ public class BasicsTest {
             start_task.execute( () -> {
 
                 final RandomClient client = c;
-                log.debug( "{} -> client prepeared", client.myId() );
+                log.debug( "{} -> client prepared", client.myId() );
 
                 client.setReconnectTimeSeconds( 2 );
                 client.startWaitConnect( Duration.ofSeconds( 10 ) );

@@ -7,8 +7,8 @@ import m2.proxy.common.DirectSite;
 import m2.proxy.common.LocalForward;
 import m2.proxy.common.ContentResult;
 import m2.proxy.server.ProxyServer;
-import m2.proxy.server.RemoteAccess;
-import m2.proxy.server.RemoteForward;
+import m2.proxy.server.TcpForward;
+import m2.proxy.tcp.server.AccessPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.EagerHttpResponse;
@@ -27,9 +27,9 @@ public class Factory {
     public static ProxyServer createServer(int serverPort, int tcpPort) {
         DirectForward directForward = new DirectForward();
 
-        RemoteForward remoteForward = new RemoteForward( tcpPort, 10000 );
-        remoteForward.getAccess().put( "test1", new RemoteAccess( "test1", "client1" ) );
-        remoteForward.getAccess().put( "test2", new RemoteAccess( "test2", "client2" ) );
+        TcpForward tcpForward = new TcpForward( tcpPort, 10000 );
+        tcpForward.getTcpSession().getAccessPaths().put( "test1", new AccessPath( "test1", "client1" ) );
+        tcpForward.getTcpSession().getAccessPaths().put( "test2", new AccessPath( "test2", "client2" ) );
 
         DirectSite spark = new DirectSite( "/spark", "localhost:9999" );
         directForward.sites.put( spark.getPath(), spark );
@@ -75,7 +75,7 @@ public class Factory {
         return new ProxyServer(
                 serverPort,
                 directForward,
-                remoteForward,
+                tcpForward,
                 localForward
         );
     }

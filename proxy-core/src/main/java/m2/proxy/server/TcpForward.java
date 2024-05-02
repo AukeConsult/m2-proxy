@@ -3,7 +3,6 @@ package m2.proxy.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import m2.proxy.common.*;
 import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Message;
@@ -19,15 +18,15 @@ import rawhttp.core.RawHttpResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-public class RemoteForward extends TcpServer implements Service {
-    private static final Logger log = LoggerFactory.getLogger( RemoteForward.class );
+public class TcpForward extends TcpServer implements Service {
+    private static final Logger log = LoggerFactory.getLogger( TcpForward.class );
 
     private final RawHttp http = new RawHttp();
     private final HttpHelper httpHelper = new HttpHelper();
 
     private final int timeOut;
 
-    public RemoteForward(int tcpPort, int timeOut) {
+    public TcpForward(int tcpPort, int timeOut) {
         super( tcpPort, Network.localAddress(), null );
         this.timeOut = timeOut;
     }
@@ -51,7 +50,7 @@ public class RemoteForward extends TcpServer implements Service {
             String accessToken = request.getHeaders().get( "Access-Token" ).toString();
             String agent = request.getHeaders().get( "Agent" ).toString();
 
-            Optional<String> accessPath = logon(
+            Optional<String> accessPath = getTcpSession().logon(
                     remoteClientId,
                     remoteAddress,
                     jsonObj.get( "userid" ).getAsString(),
@@ -82,7 +81,7 @@ public class RemoteForward extends TcpServer implements Service {
         Optional<String> accessPath = httpHelper.getAccessPath( request );
         if (accessPath.isPresent()) {
             Optional<RawHttpRequest> requestOut = httpHelper.forward( accessPath.get(), request );
-            if (requestOut.isPresent() && getAccess().containsKey( accessPath.get() )) {
+            if (requestOut.isPresent() && getTcpSession().getAccessPaths().containsKey( accessPath.get() )) {
 
                 try {
 
@@ -96,7 +95,7 @@ public class RemoteForward extends TcpServer implements Service {
                     String agent = request.getHeaders().get( "Agent" ).toString();
                     String path = requestOut.get().getStartLine().getUri().getPath();
 
-                    Optional<ByteString> ret = forwardHttp(
+                    Optional<ByteString> ret = getTcpSession().forwardHttp(
                             accessPath.get(),
                             path,
                             remoteAddress,

@@ -256,7 +256,7 @@ public class HttpTest {
         assertTrue(server.getActiveClients().size()>0);
         server.getActiveClients().values().forEach( c -> {
             try {
-                Optional<String> accessKey = server.logon(c.getRemoteClientId().get(),"","","","","");
+                Optional<String> accessKey = server.getTcpSession().logon(c.getRemoteClientId().get(),"","","","","");
                 assertTrue(accessKey.isPresent());
             } catch (TcpException e) {
                 throw new RuntimeException( e );

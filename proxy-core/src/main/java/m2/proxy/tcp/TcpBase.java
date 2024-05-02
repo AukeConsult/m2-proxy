@@ -18,12 +18,17 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public static final Random rnd = new Random();
 
+    protected final AtomicInteger reconnectTime = new AtomicInteger();
     protected final String myId;
     protected final String myAddress;
     protected final int myPort;
     private final String localAddress;
-    private int localPort;
+    protected int localPort;
     protected final KeyPair rsaKey;
+
+    protected int corePoolSize = 2;
+    protected int maximumPoolSize = 50;
+    protected int keepAliveTime = 10;
 
     // basic parameteres
     public String myAddress() { return myAddress; }
@@ -36,16 +41,13 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public int pingPeriod() { return 10; }
     public int nettyWorkerThreads() { return 10; }
     public int nettyConnectThreads() { return 5; }
+    public int reconnectTime() { return reconnectTime.get(); }
 
-    public static class Access {
-        public String clientId;
-        public String userId;
-        public String accessPath;
-        public String clientAddress;
-        public String accessToken;
-        public String agent;
-        public long expireTime;
-    }
+    public int corePoolSize() { return corePoolSize = 5; }
+    public int maximumPoolSize() { return maximumPoolSize = 20; }
+    public int keepAliveTime() { return keepAliveTime = 10; }
+
+    public void setReconnectTimeSeconds(int reconnectTime) { this.reconnectTime.set( reconnectTime * 1000 ); }
 
     private final AtomicReference<String> publicAddress = new AtomicReference<>();
     private final AtomicInteger publicPort = new AtomicInteger();
@@ -55,8 +57,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public AtomicInteger getPublicPort() { return publicPort; }
     public void setPublicPort(int publicPort) { this.publicPort.set( publicPort ); }
 
-    private final Map<String, Access> accessList = new ConcurrentHashMap<>();
-    public Map<String, Access> getAccessList() { return accessList; }
+    private final Map<String, AccessCache> accessCacheList = new ConcurrentHashMap<>();
+    public Map<String, AccessCache> getAccessCacheList() { return accessCacheList; }
 
     public boolean checkAccess(String accessPath, String clientAddress, String accessToken, String agent) {
         if (onCheckAccess( accessPath, clientAddress, accessToken, agent )) {
@@ -68,8 +70,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public Optional<String> setAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
         Optional<String> accessPath = onSetAccess( userId, passWord, clientAddress, accessToken, agent );
         if (accessPath.isPresent()) {
-            if (!accessList.containsKey( accessPath.get() )) {
-                Access a = new Access();
+            if (!accessCacheList.containsKey( accessPath.get() )) {
+                AccessCache a = new AccessCache();
                 a.clientId = myId;
                 a.accessPath = accessPath.get();
                 a.accessToken = accessToken;
@@ -77,7 +79,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
                 a.expireTime = System.currentTimeMillis() + Duration.ofDays( 30 ).toMillis();
                 a.agent = agent;
                 a.clientAddress = clientAddress;
-                accessList.put( a.accessPath, a );
+                accessCacheList.put( a.accessPath, a );
             }
         }
         return accessPath;
@@ -86,17 +88,16 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected abstract boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent);
     protected abstract Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent);
 
-
-
     public void setLocalPort(int localPort) { this.localPort = localPort; }
 
-    protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
+    private Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
-    protected Executor taskPool;
+    protected ExecutorService taskPool;
     public Executor getTaskPool() {
-        if(taskPool==null) {
-            taskPool = Executors.newCachedThreadPool();
+        if (taskPool == null) {
+            final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
+            taskPool = new ThreadPoolExecutor( corePoolSize(), maximumPoolSize(), keepAliveTime(), TimeUnit.SECONDS, tasks );
         }
         return taskPool;
     }
@@ -107,7 +108,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         this.myPort = 0;
         this.localAddress = "";
         this.rsaKey = null;
-
     }
     public TcpBase(String myId, String myAddress, int myPort, String localAddress, KeyPair rsaKey) {
 
@@ -127,9 +127,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         this.myAddress = myAddress == null ? "127.0.0.1" : myAddress;
         this.myPort = myPort;
         this.localAddress = localAddress == null ? "127.0.0.1" : localAddress;
-
-        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
-        taskPool = new ThreadPoolExecutor( 10, 50, 10, TimeUnit.SECONDS, tasks );
         rnd.setSeed( System.currentTimeMillis() );
     }
 
@@ -140,8 +137,15 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     public abstract void onStart();
     public abstract void onStop();
 
-    @Override final protected boolean open() { return true; }
+    @Override final protected boolean open() {
+        return true;
+    }
+
     @Override protected void startServices() { onStart(); }
-    @Override final protected void close() { onStop(); }
+    @Override final protected void close() {
+        onStop();
+        taskPool.shutdownNow();
+        taskPool = null;
+    }
     @Override final protected void forceClose() { }
 }

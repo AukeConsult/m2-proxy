@@ -503,27 +503,26 @@ public abstract class ConnectionHandler {
     public void disconnectRemote() {
 
         if (!disconnected.getAndSet( true )) {
-
-            if (remoteClientId.get() != null && isOpen()) {
+            if (remoteClientId.get() != null) {
                 getTcpService().getActiveClients().remove( remoteClientId.get() );
-
                 myStatus.set( PingStatus.DISCONNECTED );
-                Message m = Message.newBuilder()
-                        .setType( MessageType.DISCONNECT )
-                        .setPing( Ping.newBuilder()
-                                .setStatus( myStatus.get() )
-                                .build()
-                        )
-                        .build();
+                if(ctx != null && ctx.channel().isOpen()) {
+                    Message m = Message.newBuilder()
+                            .setType( MessageType.DISCONNECT )
+                            .setPing( Ping.newBuilder()
+                                    .setStatus( myStatus.get() )
+                                    .build()
+                            )
+                            .build();
 
-                ctx.writeAndFlush( Unpooled.wrappedBuffer(
-                                intToBytes( m.getSerializedSize() ),
-                                m.toByteArray()
-                        )
-                );
-
+                    ctx.writeAndFlush( Unpooled.wrappedBuffer(
+                                    intToBytes( m.getSerializedSize() ),
+                                    m.toByteArray()
+                            )
+                    );
+                    log.debug( "{} -> disconnect remote and close handler: {}, client: {}", getTcpService().myId(), getChannelId(), getRemoteClientId() );
+                }
                 Thread.yield();
-                log.debug( "{} -> disconnect remote and close handler: {}, client: {}", getTcpService().myId(), getChannelId(), getRemoteClientId() );
             }
             if (ctx != null) {
                 ctx.executor().shutdownGracefully( 10, 100, TimeUnit.MICROSECONDS );

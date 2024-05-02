@@ -56,30 +56,24 @@ public class ProxyTcpClient {
 
         //serverAddr = serverAddr==null?Network.localAddress():serverAddr;
 
-
         proxyTcpClient = new TcpClient( clientId, serverAddr, serverPort, localAddress ) {
 
             @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
                 return true;
             }
             @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
-                return Optional.of( myId +"key");
+                return Optional.of( myId + "key" );
             }
 
             @Override public ConnectionHandler setConnectionHandler() {
 
                 log.info( "set client handler" );
                 return new ConnectionHandler() {
-                    @Override
-                    protected void onMessageIn(Message m) { }
-                    @Override
-                    protected void onMessageOut(Message m) { }
-                    @Override
-                    protected void onConnect(String ClientId, String remoteAddress) { }
-                    @Override
-                    protected void onDisonnect(String ClientId, String remoteAddress) { }
-                    @Override
-                    public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
+                    @Override protected void onMessageIn(Message m) { }
+                    @Override protected void onMessageOut(Message m) { }
+                    @Override protected void onConnect(String ClientId, String remoteAddress) { }
+                    @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
+                    @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                         try {
                             if (type == RequestType.PLAIN) {
                                 reply( sessionId, requestId, type, requestMessage );
@@ -91,10 +85,9 @@ public class ProxyTcpClient {
                                         requestId,
                                         RequestType.NONE,
                                         null
-                                     );
+                                );
                             }
                             Thread.sleep( new Random().nextInt( 2000 ) );
-
                         } catch (InterruptedException e) {
                             throw new RuntimeException( e );
                         }
@@ -106,12 +99,10 @@ public class ProxyTcpClient {
         proxyTcpClient.start();
 
         getRuntime().addShutdownHook( new Thread( () -> proxyTcpClient.stop() ) );
-
     }
 
     public static void main(String[] args) {
         app = new ProxyTcpClient();
         app.run( args );
     }
-
 }
