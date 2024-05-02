@@ -107,19 +107,15 @@ public class RemoteForward extends TcpServer implements Service {
                     );
 
                     if (ret.isPresent()) {
-                        try {
-                            HttpReply reply = HttpReply.parseFrom( ret.get() );
-                            if (reply.getOkLogon()) {
-                                log.warn( "GOT REPLY client: {}", myId );
-                                return Optional.of( http.parseResponse( reply.getReply().toStringUtf8() ) );
-                            } else {
-                                log.warn( "REJECTED REQUEST client: {}", myId );
-                                return Optional.of( http.parseResponse(
-                                        httpHelper.errReply( 403, ProxyStatus.REJECTED, "no access" )
-                                ) );
-                            }
-                        } catch (InvalidProtocolBufferException e) {
-                            new TcpException( ProxyStatus.FAIL, e.getMessage() );
+                        HttpReply reply = HttpReply.parseFrom( ret.get() );
+                        if (reply.getOkLogon()) {
+                            log.warn( "GOT REPLY client: {}", myId );
+                            return Optional.of( http.parseResponse( reply.getReply().toStringUtf8() ) );
+                        } else {
+                            log.warn( "REJECTED REQUEST client: {}", myId );
+                            return Optional.of( http.parseResponse(
+                                    httpHelper.errReply( 403, ProxyStatus.REJECTED, "no access" )
+                            ) );
                         }
                     }
 

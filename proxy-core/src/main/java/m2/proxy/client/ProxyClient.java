@@ -22,8 +22,8 @@ public class ProxyClient extends TcpClient implements Service {
 
     private final DirectForward directForward;
     private final LocalForward localForward;
-    private final AccessControl accessControl;
     private final ClientSite clientSite;
+    private final AccessControl accessControl;
 
     public ProxyClient(
             String clientId,
@@ -64,7 +64,7 @@ public class ProxyClient extends TcpClient implements Service {
             @Override protected void onDisonnect(String ClientId, String remoteAddress) {}
             @Override
             protected void onRequest(long sessionId, long requestId, RequestType requestType, String address, ByteString requestBytes) {
-                getTcpServe().getTaskPool().execute( () -> {
+                getTcpService().getTaskPool().execute( () -> {
 
                     try {
 

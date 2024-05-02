@@ -77,7 +77,7 @@ public abstract class SessionHandler {
         return Optional.empty();
     }
 
-    public synchronized ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut) throws TcpException {
+    public ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut) throws TcpException {
 
         if(getHandler().isOpen()) {
             try {
@@ -125,7 +125,7 @@ public abstract class SessionHandler {
         }
     }
 
-    public synchronized long sendAsyncRequest(String destination, ByteString message, RequestType type) throws TcpException {
+    public long sendAsyncRequest(String destination, ByteString message, RequestType type) throws TcpException {
 
         if(getHandler().isOpen()) {
             // encode message

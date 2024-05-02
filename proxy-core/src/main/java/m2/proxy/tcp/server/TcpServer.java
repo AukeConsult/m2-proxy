@@ -2,19 +2,12 @@ package m2.proxy.tcp.server;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import m2.proxy.common.ProxyStatus;
 import m2.proxy.common.TcpException;
 import m2.proxy.proto.MessageOuterClass;
-import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.server.RemoteAccess;
 import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
-import m2.proxy.tcp.handlers.MessageDecoder;
 import m2.proxy.tcp.handlers.SessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +16,9 @@ import java.security.KeyPair;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 public abstract class TcpServer extends TcpBase {
-
     private static final Logger log = LoggerFactory.getLogger( TcpServer.class);
 
     private final Map<String, ConnectionHandler> clientHandles = new ConcurrentHashMap<>();
@@ -40,6 +32,8 @@ public abstract class TcpServer extends TcpBase {
     public TcpServer(int serverPort, String localAddress, KeyPair rsaKey) {
         super("SERVER",localAddress,serverPort,localAddress,rsaKey);
         setLocalPort(serverPort);
+        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>(10000);
+        taskPool = new ThreadPoolExecutor( 100, 5000, 30, TimeUnit.SECONDS, tasks );
     }
 
     protected Optional<SessionHandler> getSession(String clientId, String remoteAddress) {
@@ -153,10 +147,33 @@ public abstract class TcpServer extends TcpBase {
     }
 
     @Override
-    public final void disConnect(ConnectionHandler handler) {
-        log.debug("server disconnect ch: {}, addr: {}", handler.getChannelId(),handler.getRemotePublicAddress());
-        handler.close();
+    public final void doDisconnect(ConnectionHandler handler) {
+
+        // remove from active list
         clientHandles.remove(handler.getChannelId());
+        handler.disconnectRemote();
+        log.debug("{} -> disconnect ch: {}, client: {}, addr: {}",
+                getMyId(),
+                handler.getChannelId(),
+                handler.getRemoteClientId(),
+                handler.getRemotePublicAddress()
+        );
+    }
+
+    @Override
+    public final void onDisconnected(ConnectionHandler handler) {
+
+//        // remove from active list
+//        clientHandles.remove(handler.getChannelId());
+//        handler.disconnectClose();
+//
+//        log.debug("{} -> disconnect ch: {}, client: {}, addr: {}",
+//                getMyId(),
+//                handler.getChannelId(),
+//                handler.getRemoteClientId(),
+//                handler.getRemotePublicAddress()
+//        );
+
     }
 
     @Override
@@ -171,106 +188,24 @@ public abstract class TcpServer extends TcpBase {
         return Optional.empty();
     }
 
-    private static class ServerThread implements Runnable {
-        private final TcpServer server;
-        private final EventLoopGroup bossGroup;
-        private final EventLoopGroup workerGroup;
-        private final String serverAddr;
-        private final int serverPort;
 
-        public ServerThread(final TcpServer server) {
-            this.server=server;
-            this.serverAddr=server.myAddress;
-            this.serverPort=server.myPort;
-            this.bossGroup = new NioEventLoopGroup();
-            this.workerGroup = new NioEventLoopGroup();
-        }
-
-        public void stop() {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-            server.clientHandles.clear();
-        }
-
-        @Override
-        public void run() {
-
-            try {
-
-                ServerBootstrap serverBootstrap = new ServerBootstrap();
-                serverBootstrap.group(bossGroup, workerGroup)
-                        .channel(NioServerSocketChannel.class)
-                        .childHandler(new ChannelInitializer<SocketChannel>() {
-                            @Override
-                            protected void initChannel(SocketChannel ch) {
-                                ch.pipeline().addFirst(new MessageDecoder(server));
-                                ch.pipeline().addLast(new SimpleChannelInboundHandler<byte[]>() {
-                                    @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, byte[] bytes) {
-                                        server.getExecutor().execute( () -> {
-                                            try {
-                                                Message msg = Message.parseFrom( bytes );
-                                                String channelId = ctx.channel().id().asShortText();
-                                                if(server.getClientHandles().containsKey(channelId)) {
-                                                    server.getClientHandles().get(channelId).readMessage(msg);
-                                                } else {
-                                                    log.warn("{} -> client not open, ch: {}, addr: {}",
-                                                            server.getMyId(),
-                                                            channelId,ctx.channel().remoteAddress().toString());
-                                                }
-                                            } catch (InvalidProtocolBufferException e) {
-                                                log.error( "error create message from bytes" );
-                                            }
-                                        });
-                                    }
-                                    @Override
-                                    public void channelActive(ChannelHandlerContext ctx) {
-                                        final ConnectionHandler handler = server.setConnectionHandler();
-                                        handler.setTcpServe(server);
-                                        handler.initServer(ctx.channel().id().asShortText(),ctx);
-                                        server.getClientHandles().put(handler.getChannelId(),handler);
-                                    }
-                                });
-                            }
-                        })
-                        .option(ChannelOption.SO_BACKLOG, 200)
-                        .childOption(ChannelOption.SO_KEEPALIVE, true);
-
-                ChannelFuture f = serverBootstrap.bind(serverAddr,serverPort).sync();
-                f.channel().closeFuture().sync();
-                f.channel().close();
-
-            } catch (InterruptedException e) {
-                log.info("Stopp error:",e);
-            }
-
-        }
-    }
-
-    private ServerThread serverThread;
-    private void startServer () {
-        if(serverThread!=null) {
-            serverThread.stop();
-        }
-        serverThread = new ServerThread(this);
-        getExecutor().execute(serverThread);
-    }
-
-    private void stopServer () {
-        if(serverThread!=null) {
-            serverThread.stop();
-        }
-    }
+    private TcpServerWorker tcpServerWorker;
 
     @Override
     public final void onStart() {
         log.info("{} -> Starting netty server on -> {}:{} ", getMyId(), getLocalAddress(),getLocalPort());
-        startServer ();
+        if(tcpServerWorker !=null) {
+            tcpServerWorker.stopService();
+        }
+        tcpServerWorker = new TcpServerWorker(this);
+        getExecutor().execute( tcpServerWorker );
     }
 
     @Override
     public final void onStop() {
-        stopServer();
+        if(tcpServerWorker !=null) {
+            tcpServerWorker.disconnectStopService();
+        }
     }
 
     @Override

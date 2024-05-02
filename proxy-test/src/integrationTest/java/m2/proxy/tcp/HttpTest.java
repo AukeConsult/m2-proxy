@@ -26,12 +26,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class HttpCommunicateTest {
-    private static final Logger log = LoggerFactory.getLogger( HttpCommunicateTest.class );
+public class HttpTest {
+    private static final Logger log = LoggerFactory.getLogger( HttpTest.class );
 
     final TcpServer server;
 
-    public HttpCommunicateTest() throws NoSuchAlgorithmException {
+    public HttpTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
         generator.initialize( 2048 );
         KeyPair rsaKey = generator.generateKeyPair();
@@ -53,7 +53,7 @@ public class HttpCommunicateTest {
                     @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
                         logger.info( "Request: {}, {}", sessionId, requestId );
-                        getTcpServe().getTaskPool().execute( () -> {
+                        getTcpService().getTaskPool().execute( () -> {
                             try {
                                 Thread.sleep( TcpBase.rnd.nextInt( 500 ) + 100 );
                             } catch (InterruptedException ignored) {
@@ -68,7 +68,7 @@ public class HttpCommunicateTest {
     }
 
     public static class Client extends TcpClient {
-        private static final Logger log = LoggerFactory.getLogger( BasicCommunicateTest.TcpClient.class );
+        private static final Logger log = LoggerFactory.getLogger( BasicsTest.TcpClient.class );
 
         public Client(String clientId, int ServerPort, String localport) {
             super( clientId, "127.0.0.1", ServerPort, localport );
@@ -90,15 +90,15 @@ public class HttpCommunicateTest {
 
             return new ConnectionHandler() {
                 @Override protected void onMessageIn(Message m) {
-                    log.info( "{} -> in {}", getTcpServe().getMyId(), m.getType() );
+                    log.info( "{} -> in {}", getTcpService().getMyId(), m.getType() );
                     if(m.getType()== MessageType.REQUEST) {
-                        log.info( "{} -> request {}", getTcpServe().getMyId(), m.getRequest().getType());
+                        log.info( "{} -> request {}", getTcpService().getMyId(), m.getRequest().getType());
                         sessionId.set(m.getRequest().getSessionId());
                         requestId.set(m.getRequest().getRequestId());
                     }
                 }
                 @Override protected void onMessageOut(Message m) {
-                    log.info( "{} -> out {}", getTcpServe().getMyId(), m.getType() );
+                    log.info( "{} -> out {}", getTcpService().getMyId(), m.getType() );
                     if(m.getType()== MessageType.REPLY) {
                         assertEquals(sessionId.get(),m.getReply().getSessionId());
                         assertEquals(requestId.get(),m.getReply().getRequestId());
@@ -161,7 +161,7 @@ public class HttpCommunicateTest {
 
         long start = System.currentTimeMillis();
         while(System.currentTimeMillis()-start<30000) {
-            client1.getTcpServers().forEach( (k, s) -> {
+            client1.getTcpRemoteServers().forEach( s -> {
 
                 try {
                     s.getHandler().openSession( session, 10000 );

@@ -32,9 +32,9 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     private final AtomicInteger publicPort = new AtomicInteger();
 
     public String getPublicAddress() { return publicAddress.get(); }
-    public void setPublicAddress(String publicAddress) { this.publicAddress.set(publicAddress); }
+    public void setPublicAddress(String publicAddress) { this.publicAddress.set( publicAddress ); }
     public AtomicInteger getPublicPort() { return publicPort; }
-    public void setPublicPort(int publicPort) { this.publicPort.set(publicPort); }
+    public void setPublicPort(int publicPort) { this.publicPort.set( publicPort ); }
 
     private final Map<String, Access> accessList = new ConcurrentHashMap<>();
     public Map<String, Access> getAccessList() { return accessList; }
@@ -51,7 +51,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         if (accessPath.isPresent()) {
             if (!accessList.containsKey( accessPath.get() )) {
                 Access a = new Access();
-                a.clientId= myId;
+                a.clientId = myId;
                 a.accessPath = accessPath.get();
                 a.accessToken = accessToken;
                 a.userId = userId;
@@ -70,27 +70,38 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected final String myId;
     protected final String myAddress;
     protected final int myPort;
+    private final String localAddress;
+    private int localPort;
+    protected final KeyPair rsaKey;
+
     public String getMyAddress() { return myAddress; }
     public int getMyPort() { return myPort; }
     public String getMyId() { return myId; }
-
-    protected final KeyPair rsaKey;
-    protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
-
-    private String localAddress;
-    private int localPort;
-
-    public String getLocalAddress() { return localAddress; }
-    public void setLocalAddress(String localAddress) { this.localAddress = localAddress; }
-    public int getLocalPort() { return localPort; }
-    public void setLocalPort(int localPort) { this.localPort = localPort; }
     public KeyPair getRsaKey() { return rsaKey; }
 
+    public String getLocalAddress() { return localAddress; }
+    public int getLocalPort() { return localPort; }
+    public void setLocalPort(int localPort) { this.localPort = localPort; }
+
+    protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
-    private final Executor taskPool;
-    public Executor getTaskPool() { return taskPool; }
+    protected Executor taskPool;
+    public Executor getTaskPool() {
+        if(taskPool==null) {
+            taskPool = Executors.newCachedThreadPool();
+        }
+        return taskPool;
+    }
 
+    public TcpBase() {
+        this.myId = "";
+        this.myAddress = "";
+        this.myPort = 0;
+        this.localAddress = "";
+        this.rsaKey = null;
+
+    }
     public TcpBase(String myId, String myAddress, int myPort, String localAddress, KeyPair rsaKey) {
 
         if (rsaKey == null) {
@@ -108,7 +119,6 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         this.myId = myId;
         this.myAddress = myAddress == null ? "127.0.0.1" : myAddress;
         this.myPort = myPort;
-        //this.localAddress = localAddress==null?Network.localAddress():localAddress;
         this.localAddress = localAddress == null ? "127.0.0.1" : localAddress;
 
         final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
@@ -118,7 +128,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public abstract ConnectionHandler setConnectionHandler();
     public abstract void connect(ConnectionHandler handler);
-    public abstract void disConnect(ConnectionHandler handler);
+    public abstract void doDisconnect(ConnectionHandler handler);
+    public abstract void onDisconnected(ConnectionHandler handler);
     public abstract void onStart();
     public abstract void onStop();
 

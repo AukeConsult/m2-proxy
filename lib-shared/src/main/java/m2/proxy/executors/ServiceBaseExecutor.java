@@ -13,7 +13,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
 
     private static final Logger log = LoggerFactory.getLogger(ServiceBaseExecutor.class);
 
-    private static ExecutorService executor;
+    private ExecutorService executor;
     public ExecutorService getExecutor() {
         if(executor==null) {
             executor = Executors.newCachedThreadPool();
@@ -22,7 +22,6 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
     }
 
     protected final AtomicBoolean stopped = new AtomicBoolean(false);
-
     public boolean isRunning() {
         return running.get() && !stopped.get();
     }
