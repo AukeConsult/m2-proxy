@@ -32,8 +32,8 @@ public abstract class TcpServer extends TcpBase {
     public TcpServer(int serverPort, String localAddress, KeyPair rsaKey) {
         super("SERVER",localAddress,serverPort,localAddress,rsaKey);
         setLocalPort(serverPort);
-        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>(10000);
-        taskPool = new ThreadPoolExecutor( 100, 5000, 30, TimeUnit.SECONDS, tasks );
+        final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>(500);
+        taskPool = new ThreadPoolExecutor( 10, 500, 5, TimeUnit.SECONDS, tasks );
     }
 
     protected Optional<SessionHandler> getSession(String clientId, String remoteAddress) {
@@ -78,7 +78,7 @@ public abstract class TcpServer extends TcpBase {
 
                 if (accessPath.isPresent()) {
                     log.info( "Got accessPath: {}, client: {}", accessPath.get(), remoteClient );
-                    RemoteAccess a = new RemoteAccess( accessPath.get(), getMyId() );
+                    RemoteAccess a = new RemoteAccess( accessPath.get(), myId() );
                     access.put( a.getAccessPath(), a );
                     return accessPath;
                 } else {
@@ -86,7 +86,7 @@ public abstract class TcpServer extends TcpBase {
                     throw new TcpException( ProxyStatus.REJECTED, "cant fond client" );
                 }
             } else {
-                log.warn( "{} -> Can not find client: {}", getMyId(), remoteClient );
+                log.warn( "{} -> Can not find client: {}", myId(), remoteClient );
                 throw new TcpException( ProxyStatus.NOTFOUND, "cant fond client" );
             }
 
@@ -153,7 +153,7 @@ public abstract class TcpServer extends TcpBase {
         clientHandles.remove(handler.getChannelId());
         handler.disconnectRemote();
         log.debug("{} -> disconnect ch: {}, client: {}, addr: {}",
-                getMyId(),
+                myId(),
                 handler.getChannelId(),
                 handler.getRemoteClientId(),
                 handler.getRemotePublicAddress()
@@ -193,7 +193,7 @@ public abstract class TcpServer extends TcpBase {
 
     @Override
     public final void onStart() {
-        log.info("{} -> Starting netty server on -> {}:{} ", getMyId(), getLocalAddress(),getLocalPort());
+        log.info("{} -> Starting netty server on -> {}:{} ", myId(), localAddress(), localPort());
         if(tcpServerWorker !=null) {
             tcpServerWorker.stopService();
         }

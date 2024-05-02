@@ -42,13 +42,13 @@ public class HttpTest {
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
                     @Override protected void onMessageIn(Message m) {
-                        log.info( "{} -> in {}", getMyId(),m.getType() );
+                        log.info( "{} -> in {}", myId(),m.getType() );
                     }
                     @Override protected void onMessageOut(Message m) {
-                        log.info( "{} -> out {}", getMyId(),m.getType() );
+                        log.info( "{} -> out {}", myId(),m.getType() );
                     }
                     @Override protected void onConnect(String ClientId, String remoteAddress) {
-                        logger.info( "Connect handler: {}, {}", getMyId(), remoteAddress );
+                        logger.info( "Connect handler: {}, {}", myId(), remoteAddress );
                     }
                     @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
@@ -78,7 +78,7 @@ public class HttpTest {
             return true;
         }
         @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
-            return Optional.of( getMyId()+"Key");
+            return Optional.of( myId()+"Key");
         }
 
         @Override
@@ -90,15 +90,15 @@ public class HttpTest {
 
             return new ConnectionHandler() {
                 @Override protected void onMessageIn(Message m) {
-                    log.info( "{} -> in {}", getTcpService().getMyId(), m.getType() );
+                    log.info( "{} -> in {}", getTcpService().myId(), m.getType() );
                     if(m.getType()== MessageType.REQUEST) {
-                        log.info( "{} -> request {}", getTcpService().getMyId(), m.getRequest().getType());
+                        log.info( "{} -> request {}", getTcpService().myId(), m.getRequest().getType());
                         sessionId.set(m.getRequest().getSessionId());
                         requestId.set(m.getRequest().getRequestId());
                     }
                 }
                 @Override protected void onMessageOut(Message m) {
-                    log.info( "{} -> out {}", getTcpService().getMyId(), m.getType() );
+                    log.info( "{} -> out {}", getTcpService().myId(), m.getType() );
                     if(m.getType()== MessageType.REPLY) {
                         assertEquals(sessionId.get(),m.getReply().getSessionId());
                         assertEquals(requestId.get(),m.getReply().getRequestId());

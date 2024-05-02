@@ -126,15 +126,15 @@ public class ProxyClient extends TcpClient implements Service {
     public void onStart() {
         super.onStart();
         log.info( "Proxy clientId {}, start on site port: {}, proxy port: {}:{}",
-                getMyId(),
-                clientSite.getSitePort() , getMyAddress(), getMyPort() );
+                myId(),
+                clientSite.getSitePort() , myAddress(), myPort() );
         clientSite.start();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        log.info( "Proxy clientId {}, stopped", getMyId() );
+        log.info( "Proxy clientId {}, stopped", myId() );
         clientSite.stop();
         clientSite.getMetrics().printLog();
     }

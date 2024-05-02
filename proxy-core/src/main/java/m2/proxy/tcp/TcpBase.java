@@ -18,6 +18,25 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public static final Random rnd = new Random();
 
+    protected final String myId;
+    protected final String myAddress;
+    protected final int myPort;
+    private final String localAddress;
+    private int localPort;
+    protected final KeyPair rsaKey;
+
+    // basic parameteres
+    public String myAddress() { return myAddress; }
+    public int myPort() { return myPort; }
+    public String myId() { return myId; }
+    public KeyPair rsaKey() { return rsaKey; }
+    public String localAddress() { return localAddress; }
+    public int localPort() { return localPort; }
+
+    public int pingPeriod() { return 10; }
+    public int nettyWorkerThreads() { return 10; }
+    public int nettyConnectThreads() { return 5; }
+
     public static class Access {
         public String clientId;
         public String userId;
@@ -67,20 +86,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected abstract boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent);
     protected abstract Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent);
 
-    protected final String myId;
-    protected final String myAddress;
-    protected final int myPort;
-    private final String localAddress;
-    private int localPort;
-    protected final KeyPair rsaKey;
 
-    public String getMyAddress() { return myAddress; }
-    public int getMyPort() { return myPort; }
-    public String getMyId() { return myId; }
-    public KeyPair getRsaKey() { return rsaKey; }
 
-    public String getLocalAddress() { return localAddress; }
-    public int getLocalPort() { return localPort; }
     public void setLocalPort(int localPort) { this.localPort = localPort; }
 
     protected Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();

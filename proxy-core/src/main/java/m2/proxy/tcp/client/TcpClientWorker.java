@@ -48,7 +48,7 @@ public class TcpClientWorker extends ConnectionWorker {
     public boolean sendRawMessage(byte[] bytes) { return getHandler().sendRawMessage( bytes ); }
 
     private void createBossGroup() {
-        this.bossGroup = new NioEventLoopGroup(10, tcpClient.getTaskPool());
+        this.bossGroup = new NioEventLoopGroup(2);
     }
     public TcpClientWorker(final String workerId, final TcpClient tcpClient, String myAddress, int myPort) {
         this.tcpClient = tcpClient;
@@ -63,8 +63,7 @@ public class TcpClientWorker extends ConnectionWorker {
         if (running.getAndSet( false )) {
 
             if (connectionHandler.get() != null) {
-
-                log.info( "{} -> tcp client stopped: {}", tcpClient.getMyId(), connectionHandler.get().getRemoteClientId() );
+                log.debug( "{} -> tcp client stopped: {}", tcpClient.myId(), connectionHandler.get().getRemoteClientId() );
                 if (notifyRemote) {
                     connectionHandler.get().disconnectRemote();
                 } else {
@@ -85,7 +84,7 @@ public class TcpClientWorker extends ConnectionWorker {
     public void run() {
 
         if (!running.getAndSet( true )) {
-            log.info( "{} -> Server thread start", tcpClient.getMyId() );
+            log.debug( "{} -> Server thread start", tcpClient.myId() );
             try {
 
                 Bootstrap bootstrap = new Bootstrap();
@@ -96,15 +95,15 @@ public class TcpClientWorker extends ConnectionWorker {
                                 ch.pipeline().addFirst( new MessageDecoder( tcpClient ) );
                                 ch.pipeline().addLast( new SimpleChannelInboundHandler<byte[]>() {
                                     @Override protected void channelRead0(ChannelHandlerContext ctx, byte[] bytes) {
-                                        tcpClient.getTaskPool().execute( () -> {
-                                            try {
-                                                Message msg = Message.parseFrom( bytes );
-                                                getHandler().readMessage( msg );
-                                            } catch (InvalidProtocolBufferException e) {
-                                                log.error( "error create message from bytes" );
-                                            }
-                                        } );
+                                        try {
+                                            Message msg = Message.parseFrom( bytes );
+                                            getHandler().readMessage( msg );
+                                        } catch (InvalidProtocolBufferException e) {
+                                            log.error( "error create message from bytes" );
+                                        }
+                                        Thread.yield();
                                     }
+
                                     @Override public void channelActive(ChannelHandlerContext ctx) {
                                         getHandler().initClient( ctx.channel().id().asLongText(), ctx );
                                     }
@@ -116,19 +115,19 @@ public class TcpClientWorker extends ConnectionWorker {
                 f.channel().closeFuture().sync();
 
             } catch (InterruptedException e) {
-                log.warn( "{} -> Connect server Interrupt error: {}", tcpClient.getMyId(), e.getMessage() );
+                log.warn( "{} -> Connect server Interrupt error: {}", tcpClient.myId(), e.getMessage() );
                 connectionErrors.incrementAndGet();
                 tcpClient.onDisconnected( getHandler() );
             } catch (Exception e) {
                 if (e.getCause() != null) {
-                    log.warn( "{} -> Connect server error: {}", tcpClient.getMyId(), e.getCause().getMessage() );
+                    log.warn( "{} -> Connect server error: {}", tcpClient.myId(), e.getCause().getMessage() );
                 } else {
-                    log.warn( "{} -> Connect server error: {}", tcpClient.getMyId(), e.getMessage() );
+                    log.warn( "{} -> Connect server error: {}", tcpClient.myId(), e.getMessage() );
                 }
                 connectionErrors.incrementAndGet();
                 tcpClient.onDisconnected( getHandler() );
             }
-            log.debug( "{} -> Client thread stopped", tcpClient.getMyId() );
+            log.debug( "{} -> Server thread stopped", tcpClient.myId() );
 
         }
     }

@@ -54,7 +54,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
         this.localForward.setService( this );
 
         this.serverSite = new ServerSite( this );
-        this.proxyMetrics.setId( remoteForward.getMyId() );
+        this.proxyMetrics.setId( remoteForward.myId() );
         this.tcpRawHttpServer = new TcpRawHttpServer( serverPort );
     }
 

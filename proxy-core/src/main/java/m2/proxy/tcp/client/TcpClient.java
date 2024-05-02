@@ -78,7 +78,7 @@ public abstract class TcpClient extends TcpBase {
     }
 
     @Override public final void connect(ConnectionHandler handler) {
-        handler.startPing( 10 );
+
     }
 
     @Override public final void doDisconnect(ConnectionHandler handler) {
@@ -94,20 +94,20 @@ public abstract class TcpClient extends TcpBase {
             // just stop everything without notify remote server
             tcpClientWorker.disconnect( false );
 
-            log.info( "{} -> Start server reconnect in: {} ms", getMyId(), getReconnectTime() );
+            log.info( "{} -> Start server reconnect in: {} ms", myId(), getReconnectTime() );
             try {
                 Thread.sleep( getReconnectTime() );
             } catch (InterruptedException ignored) {
             }
-            log.info( "{} -> Client reconnect: {}:{}", getMyId(), this.myAddress, this.myPort );
+            log.info( "{} -> Client reconnect: {}:{}", myId(), this.myAddress, this.myPort );
             getTaskPool().execute( tcpClientWorker );
 
         } );
     }
 
     @Override public void onStart() {
-        log.info( "Netty client start on {}:{}, connect to host -> {}:{}",
-                getLocalAddress(), getLocalPort(), myAddress, myPort );
+        log.debug( "Netty client start on {}:{}, connect to host -> {}:{}",
+                localAddress(), localPort(), myAddress, myPort );
         startServerWorkers();
     }
 

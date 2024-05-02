@@ -2,6 +2,7 @@ package m2.proxy.tcp.server;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -27,11 +28,12 @@ class TcpServerWorker implements Runnable {
     public TcpServerWorker(final TcpServer tcpServer) {
 
         this.tcpServer = tcpServer;
-        this.serverAddr= tcpServer.getMyAddress();
-        this.serverPort= tcpServer.getMyPort();
-        this.bossGroup = new NioEventLoopGroup(100, tcpServer.getTaskPool());
-        this.workerGroup = new NioEventLoopGroup(100, tcpServer.getTaskPool());
+        this.serverAddr= tcpServer.myAddress();
+        this.serverPort= tcpServer.myPort();
+        this.bossGroup = new NioEventLoopGroup(tcpServer.nettyConnectThreads());
+        this.workerGroup = new NioEventLoopGroup(tcpServer.nettyWorkerThreads());
     }
+
 
     public void disconnectStopService() {
         new ArrayList<>(tcpServer.getClientHandles().values())
@@ -53,6 +55,9 @@ class TcpServerWorker implements Runnable {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)
                     .channel( NioServerSocketChannel.class)
+                    .option( ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT )
+                    .option( ChannelOption.SO_BACKLOG, 100)
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
@@ -60,28 +65,26 @@ class TcpServerWorker implements Runnable {
                             ch.pipeline().addLast(new SimpleChannelInboundHandler<byte[]>() {
                                 @Override
                                 protected void channelRead0(ChannelHandlerContext ctx, byte[] bytes) {
-                                    tcpServer.getTaskPool().execute( () -> {
-                                        try {
-                                            Message msg = Message.parseFrom( bytes );
-                                            String channelId = ctx.channel().id().asLongText();
-                                            if(tcpServer.getClientHandles().containsKey(channelId)) {
-                                                tcpServer.getClientHandles().get(channelId).readMessage(msg);
-                                            } else {
-                                                log.warn("{} -> client not open, ch: {}, addr: {}",
-                                                        tcpServer.getMyId(),
-                                                        channelId,ctx.channel().remoteAddress().toString());
-                                            }
-                                        } catch (InvalidProtocolBufferException e) {
-                                            log.error( "error create message from bytes" );
+                                    try {
+                                        Message msg = Message.parseFrom( bytes );
+                                        String channelId = ctx.channel().id().asLongText();
+                                        if(tcpServer.getClientHandles().containsKey(channelId)) {
+                                            tcpServer.getClientHandles().get(channelId).readMessage(msg);
+                                        } else {
+                                            log.warn("{} -> client not open, ch: {}, addr: {}",
+                                                    tcpServer.myId(),
+                                                    channelId,ctx.channel().remoteAddress().toString());
                                         }
-                                    });
+                                    } catch (InvalidProtocolBufferException e) {
+                                        log.error( "error create message from bytes" );
+                                    }
                                 }
                                 @Override
                                 public void channelActive(ChannelHandlerContext ctx) {
                                     String channelId = ctx.channel().id().asLongText();
                                     if(tcpServer.getClientHandles().containsKey(channelId)) {
                                         log.error("{} -> CHANNEL EXISTS, ch: {}, addr: {}",
-                                                tcpServer.getMyId(),
+                                                tcpServer.myId(),
                                                 channelId,ctx.channel().remoteAddress().toString());
                                     } else {
                                         final ConnectionHandler handler = tcpServer.setConnectionHandler();
@@ -92,16 +95,14 @@ class TcpServerWorker implements Runnable {
                                 }
                             });
                         }
-                    })
-                    .option( ChannelOption.SO_BACKLOG, 200)
-                    .childOption(ChannelOption.SO_KEEPALIVE, true);
+                    });
 
             ChannelFuture f = serverBootstrap.bind(serverAddr,serverPort).sync();
             f.channel().closeFuture().sync();
             f.channel().close();
 
         } catch (InterruptedException e) {
-            log.info("{} -> Stopp error: {}",tcpServer.getMyId(),e.getMessage());
+            log.info("{} -> Stopp error: {}",tcpServer.myId(),e.getMessage());
         }
     }
 }
