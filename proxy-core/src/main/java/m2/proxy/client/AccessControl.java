@@ -8,8 +8,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AccessControl implements Service {
-
-
     Service service;
     @Override
     public Service getService() {

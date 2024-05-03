@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import m2.proxy.common.*;
+import m2.proxy.proto.MessageOuterClass;
 import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
@@ -18,15 +19,15 @@ import rawhttp.core.RawHttpResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-public class TcpForward extends TcpServer implements Service {
-    private static final Logger log = LoggerFactory.getLogger( TcpForward.class );
+public class HttpForward extends TcpServer implements Service {
+    private static final Logger log = LoggerFactory.getLogger( HttpForward.class );
 
     private final RawHttp http = new RawHttp();
     private final HttpHelper httpHelper = new HttpHelper();
 
     private final int timeOut;
 
-    public TcpForward(int tcpPort, int timeOut) {
+    public HttpForward(int tcpPort, int timeOut) {
         super( tcpPort, Network.localAddress(), null );
         this.timeOut = timeOut;
     }
@@ -50,7 +51,7 @@ public class TcpForward extends TcpServer implements Service {
             String accessToken = request.getHeaders().get( "Access-Token" ).toString();
             String agent = request.getHeaders().get( "Agent" ).toString();
 
-            Optional<String> accessPath = getTcpSession().logon(
+            Optional<MessageOuterClass.Logon> accessPath = getAccessSession().logon(
                     remoteClientId,
                     remoteAddress,
                     jsonObj.get( "userid" ).getAsString(),
@@ -58,7 +59,7 @@ public class TcpForward extends TcpServer implements Service {
                     accessToken,
                     agent
             );
-            if(accessPath.isPresent()) {
+            if(accessPath.isPresent() && accessPath.get().getOkLogon()) {
                 return Optional.of( http.parseResponse(
                         httpHelper.errReply( 200, ProxyStatus.OK, "" )
                 ) );
@@ -81,7 +82,7 @@ public class TcpForward extends TcpServer implements Service {
         Optional<String> accessPath = httpHelper.getAccessPath( request );
         if (accessPath.isPresent()) {
             Optional<RawHttpRequest> requestOut = httpHelper.forward( accessPath.get(), request );
-            if (requestOut.isPresent() && getTcpSession().getAccessPaths().containsKey( accessPath.get() )) {
+            if (requestOut.isPresent() && getAccessSession().getAccessPaths().containsKey( accessPath.get() )) {
 
                 try {
 
@@ -95,7 +96,7 @@ public class TcpForward extends TcpServer implements Service {
                     String agent = request.getHeaders().get( "Agent" ).toString();
                     String path = requestOut.get().getStartLine().getUri().getPath();
 
-                    Optional<ByteString> ret = getTcpSession().forwardHttp(
+                    Optional<ByteString> ret = getAccessSession().forwardHttp(
                             accessPath.get(),
                             path,
                             remoteAddress,

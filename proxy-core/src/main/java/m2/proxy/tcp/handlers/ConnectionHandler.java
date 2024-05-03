@@ -16,6 +16,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -89,12 +90,29 @@ public abstract class ConnectionHandler {
 
     // where is where session is created
     public SessionHandler openSession(SessionHandler session, int sessionTimeOut) {
-
         session.handler = this;
-        session.sessionTimeOut.set( System.currentTimeMillis() + sessionTimeOut );
         sessions.put( session.getSessionId(), session );
         return session;
     }
+
+    public SessionHandler openSession(int timeOut) {
+        return openSession(tcpService.myId(), timeOut);
+    }
+
+    public SessionHandler openSession(String id, int timeOut) {
+        long sessionId = id != null ?
+                UUID.nameUUIDFromBytes(
+                        id.getBytes()
+                ).getMostSignificantBits()
+                : 1000L;
+        if(!sessions.containsKey( sessionId )) {
+            sessions.put( sessionId, new SessionHandler(sessionId, timeOut, this) {
+                @Override public void onReceive(long requestId, ByteString reply) { }
+            } );
+        }
+        return sessions.get( sessionId );
+    }
+
 
     public void reply(long sessionId, long requestId, RequestType type, ByteString reply) {
         Message m = Message.newBuilder()
@@ -267,7 +285,7 @@ public abstract class ConnectionHandler {
         lastClientAlive.set( System.currentTimeMillis() );
         Thread.yield();
         try {
-
+            onMessageIn( m );
             startPing( getTcpService().pingPeriod() );
             if (m.hasAesKey() && hasRemoteKey.get()) {
                 if (m.getAesKey().getId() == remoteKeyId.get()) {
@@ -402,6 +420,7 @@ public abstract class ConnectionHandler {
                         getRemoteAddress()
                 );
             } else if (m.getType() == MessageType.REQUEST) {
+
                 inWork.request.incrementAndGet();
                 inWork.bytes.addAndGet( m.getSerializedSize() );
                 log.debug( "{} -> ch: {}, REQUEST: {}, addr: {}",
@@ -411,74 +430,107 @@ public abstract class ConnectionHandler {
                         getRemoteAddress()
                 );
 
-                if (m.getRequest().getType() == RequestType.HTTP) {
+                getTcpService().getTaskPool().execute( () -> {
 
-                    Http h = Http.parseFrom( m.getSubMessage() );
-                    // check is all ok
-                    if (getTcpService().checkAccess(
-                            h.getAccessPath(),
-                            h.getRemoteAddress(),
-                            h.getAccessToken(),
-                            h.getAgent()
-                    )) {
+                    try {
 
-                        onRequest(
-                                m.getRequest().getSessionId(),
-                                m.getRequest().getRequestId(),
-                                m.getRequest().getType(),
-                                m.getRequest().getDestination(),
-                                m.getRequest().getRequestMessage()
-                        );
-                    } else {
+                        if (m.getRequest().getType() == RequestType.HTTP) {
 
-                        reply( m.getRequest().getSessionId(),
-                                m.getRequest().getRequestId(), m.getRequest().getType(),
-                                HttpReply.newBuilder()
+                            Http h = Http.parseFrom( m.getSubMessage() );
+                            // check is all ok
+                            if (getTcpService().checkAccess(
+                                    h.getAccessPath(),
+                                    h.getRemoteAddress(),
+                                    h.getAccessToken(),
+                                    h.getAgent()
+                            )) {
+
+                                getTcpService().getTaskPool().execute( () -> {
+
+                                    onRequest(
+                                            m.getRequest().getSessionId(),
+                                            m.getRequest().getRequestId(),
+                                            m.getRequest().getType(),
+                                            m.getRequest().getDestination(),
+                                            m.getRequest().getRequestMessage()
+                                    );
+
+                                } );
+
+
+                            } else {
+
+                                reply( m.getRequest().getSessionId(),
+                                        m.getRequest().getRequestId(), m.getRequest().getType(),
+                                        HttpReply.newBuilder()
+                                                .setOkLogon( false )
+                                                .build()
+                                                .toByteString()
+                                );
+                            }
+
+                        } else if (m.getRequest().getType() == RequestType.LOGON) {
+
+                            Logon logon = Logon.parseFrom( m.getRequest().getRequestMessage() );
+
+                            Logon replyMessage;
+                            if (logon.getClientId().equals( getTcpService().myId() )) {
+                                Optional<String> accessPath = getTcpService().setAccess(
+                                        logon.getUserId(),
+                                        logon.getPassWord(),
+                                        logon.getRemoteAddress(),
+                                        logon.getAccessToken(),
+                                        logon.getAgent()
+                                );
+
+
+                                if (accessPath.isPresent()) {
+                                    replyMessage = Logon.newBuilder()
+                                            .setAccessPath( accessPath.get() )
+                                            .setOkLogon( true )
+                                            .build();
+                                } else {
+                                    replyMessage = Logon.newBuilder()
+                                            .setAccessPath( accessPath.get() )
+                                            .setOkLogon( false )
+                                            .build();
+                                }
+                                reply(
+                                        m.getRequest().getSessionId(),
+                                        m.getRequest().getRequestId(),
+                                        m.getRequest().getType(),
+                                        replyMessage.toByteString()
+                                );
+                            } else {
+                                replyMessage = Logon.newBuilder()
                                         .setOkLogon( false )
-                                        .build()
-                                        .toByteString()
-                        );
-                    }
-                } else if (m.getRequest().getType() == RequestType.LOGON) {
+                                        .build();
 
-                    Logon logon = Logon.parseFrom( m.getRequest().getRequestMessage() );
-                    if (logon.getClientId().equals( getRemoteClientId().get() )) {
-                        Optional<String> accessPath = getTcpService().setAccess(
-                                logon.getUserId(),
-                                logon.getPassWord(),
-                                logon.getRemoteAddress(),
-                                logon.getAccessToken(),
-                                logon.getAgent()
-                        );
-                        Logon replyMessage;
-                        if (accessPath.isPresent()) {
-                            replyMessage = Logon.newBuilder()
-                                    .setAccessPath( accessPath.get() )
-                                    .setOkLogon( true )
-                                    .build();
+                            }
+                            reply(
+                                    m.getRequest().getSessionId(),
+                                    m.getRequest().getRequestId(),
+                                    m.getRequest().getType(),
+                                    replyMessage.toByteString()
+                            );
+
                         } else {
-                            replyMessage = Logon.newBuilder()
-                                    .setAccessPath( accessPath.get() )
-                                    .setOkLogon( false )
-                                    .build();
-                        }
-                        reply(
-                                m.getRequest().getSessionId(),
-                                m.getRequest().getRequestId(),
-                                m.getRequest().getType(),
-                                replyMessage.toByteString()
-                        );
-                    }
-                } else {
 
-                    onRequest(
-                            m.getRequest().getSessionId(),
-                            m.getRequest().getRequestId(),
-                            m.getRequest().getType(),
-                            m.getRequest().getDestination(),
-                            m.getRequest().getRequestMessage()
-                    );
-                }
+                            onRequest(
+                                    m.getRequest().getSessionId(),
+                                    m.getRequest().getRequestId(),
+                                    m.getRequest().getType(),
+                                    m.getRequest().getDestination(),
+                                    m.getRequest().getRequestMessage()
+                            );
+                        }
+
+                    } catch (Exception e) {
+                        log.warn("{} -> {} Request error: {}", tcpService.myId(),getRemoteClientId(),e);
+                    }
+
+                });
+
             } else if (m.getType() == MessageType.REPLY) {
                 inWork.reply.incrementAndGet();
                 inWork.bytes.addAndGet( m.getSerializedSize() );
@@ -494,7 +546,7 @@ public abstract class ConnectionHandler {
                     requestSessions.remove( m.getReply().getRequestId() );
                 }
             }
-            onMessageIn( m );
+
         } catch (Exception e) {
             log.warn( "{} -> id: {} -> prosess exception: {}", getTcpService().myId(), channelId, e.toString() );
         }

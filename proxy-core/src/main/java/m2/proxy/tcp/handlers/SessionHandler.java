@@ -21,7 +21,6 @@ public abstract class SessionHandler {
 
     AtomicLong timeOut = new AtomicLong();
     AtomicLong lastExecute = new AtomicLong();
-    AtomicLong sessionTimeOut = new AtomicLong();
 
     ConnectionHandler handler;
     public ConnectionHandler getHandler() { return handler; }
@@ -32,11 +31,13 @@ public abstract class SessionHandler {
     public long getLastRequestId() { return lastRequestId.get();}
 
     public SessionHandler() {
-        sessionId= TcpBase.rnd.nextLong(Long.MAX_VALUE);
+        sessionId = TcpBase.rnd.nextLong(Long.MAX_VALUE);
         lastExecute.set(System.currentTimeMillis());
     }
-    public SessionHandler(Long sessionId) {
+    public SessionHandler(Long sessionId, int timeOut, ConnectionHandler handler) {
         this.sessionId = sessionId;
+        this.handler = handler;
+        this.timeOut.set(timeOut);
         lastExecute.set(System.currentTimeMillis());
     }
 
@@ -50,7 +51,7 @@ public abstract class SessionHandler {
         handler.writeMessage(m);
     }
 
-    public Optional<String> logon(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
+    public Optional<Logon> logon(String userId, String passWord, String remoteAddress, String accessToken, String agent) {
 
         try {
 
@@ -64,12 +65,9 @@ public abstract class SessionHandler {
                             .setAgent( agent )
                             .build().toByteString()
                     , RequestType.LOGON
-                    ,5000
                     );
 
-            if(Logon.parseFrom( ret ).getOkLogon()) {
-                return Optional.of(Logon.parseFrom( ret ).getAccessPath());
-            }
+            return Optional.of(Logon.parseFrom( ret ));
 
         } catch (InvalidProtocolBufferException | TcpException e) {
             log.error( "Logon error {}",e.getMessage() );
@@ -77,7 +75,7 @@ public abstract class SessionHandler {
         return Optional.empty();
     }
 
-    public ByteString sendRequest(String destination, ByteString message, RequestType type, int timeOut) throws TcpException {
+    public ByteString sendRequest(String destination, ByteString message, RequestType type) throws TcpException {
 
         if(getHandler().isOpen()) {
             try {
@@ -86,7 +84,6 @@ public abstract class SessionHandler {
 
                     // encode message
                     lastExecute.set(System.currentTimeMillis());
-                    this.timeOut.set(timeOut);
 
                     ConnectionHandler.WaitRequest req = new ConnectionHandler.WaitRequest();
                     req.sessionHandler = this;
@@ -105,7 +102,7 @@ public abstract class SessionHandler {
 
                     reply.set(null);
                     write(req.request);
-                    sendWait.wait(timeOut);
+                    sendWait.wait(timeOut.get());
                     if (reply.get() != null) {
                         return reply.get().getReplyMessage();
                     } else {
@@ -145,7 +142,6 @@ public abstract class SessionHandler {
 
             log.info("{} -> {} -> send async: {}",getSessionId(),req.requestId,message.toStringUtf8());
             write(req.request);
-
             return req.request.getRequestId();
 
         } else {

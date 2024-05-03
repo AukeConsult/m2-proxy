@@ -89,7 +89,10 @@ class TcpServerWorker extends ConnectionWorker {
                 ChannelFuture f = serverBootstrap.bind( serverAddr, serverPort ).sync();
                 f.channel().closeFuture().sync();
                 f.channel().close();
+
             } catch (InterruptedException e) {
+                log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
+            } catch (Exception e) {
                 log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
             } finally {
                 log.info( "{} -> stop netty loop", tcpServer.myId() );

@@ -29,32 +29,32 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
     private final int serverPort;
     private final LocalForward localForward;
     private final DirectForward directForward;
-    private final TcpForward tcpForward;
+    private final HttpForward httpForward;
     private final ServerSite serverSite;
 
     public int getServerPort() { return serverPort; }
     public DirectForward getDirectForward() { return directForward; }
-    public TcpForward getRemoteForward() { return tcpForward; }
+    public HttpForward getRemoteForward() { return httpForward; }
     public LocalForward getLocalSite() { return localForward; }
 
     public ProxyServer(
             int serverPort,
             DirectForward directForward,
-            TcpForward tcpForward,
+            HttpForward httpForward,
             LocalForward localForward
     ) {
 
         this.serverPort = serverPort;
         this.directForward = directForward;
-        this.tcpForward = tcpForward;
+        this.httpForward = httpForward;
         this.localForward = localForward;
 
         this.directForward.setService( this );
-        this.tcpForward.setService( this );
+        this.httpForward.setService( this );
         this.localForward.setService( this );
 
         this.serverSite = new ServerSite( this );
-        this.proxyMetrics.setId( tcpForward.myId() );
+        this.proxyMetrics.setId( httpForward.myId() );
         this.tcpRawHttpServer = new TcpRawHttpServer( serverPort );
     }
 
@@ -66,7 +66,7 @@ public class ProxyServer extends ServiceBaseExecutor implements Service {
                 // check access keys forward with tcp
                 try {
                     proxyMetrics.transIn.incrementAndGet();
-                    Optional<RawHttpResponse<?>> remote = tcpForward.handleHttp( request );
+                    Optional<RawHttpResponse<?>> remote = httpForward.handleHttp( request );
                     if (remote.isPresent()) {
                         proxyMetrics.transRemoteOut.incrementAndGet();
                         return remote;

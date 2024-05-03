@@ -1,5 +1,6 @@
 package m2.proxy.tcp.server;
 
+import m2.proxy.server.AccessSession;
 import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
@@ -16,8 +17,8 @@ public abstract class TcpServer extends TcpBase {
     private final Map<String, ConnectionHandler> clientHandles = new ConcurrentHashMap<>();
     public Map<String, ConnectionHandler> getClientHandles() { return clientHandles; }
 
-    private final TcpSession tcpSession = new TcpSession( this );
-    public TcpSession getTcpSession() { return tcpSession; }
+    private final AccessSession accessSession = new AccessSession( this );
+    public AccessSession getAccessSession() { return accessSession; }
 
     private TcpServerWorker tcpServerWorker;
 

@@ -2,8 +2,9 @@ package m2.proxy.tcp;
 
 import com.google.protobuf.ByteString;
 import m2.proxy.common.TcpException;
-import m2.proxy.proto.MessageOuterClass.MessageType;
+import m2.proxy.proto.MessageOuterClass;
 import m2.proxy.proto.MessageOuterClass.Message;
+import m2.proxy.proto.MessageOuterClass.MessageType;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.client.TcpClient;
 import m2.proxy.tcp.handlers.ConnectionHandler;
@@ -19,52 +20,48 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class HttpTest {
-    private static final Logger log = LoggerFactory.getLogger( HttpTest.class );
+public class RequestTest {
+    private static final Logger log = LoggerFactory.getLogger( RequestTest.class );
 
     final TcpServer server;
 
-    public HttpTest() throws NoSuchAlgorithmException {
+    public RequestTest() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
         generator.initialize( 2048 );
         KeyPair rsaKey = generator.generateKeyPair();
         log.info( "init server" );
         server = new TcpServer( 4000, null, rsaKey ) {
             final Logger logger = log;
+
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
                     @Override protected void onMessageIn(Message m) {
-                        log.info( "{} -> in {}", myId(),m.getType() );
+                        //log.info( "{} -> in {}", myId(), m.getType() );
                     }
                     @Override protected void onMessageOut(Message m) {
-                        log.info( "{} -> out {}", myId(),m.getType() );
+                        //log.info( "{} -> out {}", myId(), m.getType() );
                     }
                     @Override protected void onConnect(String ClientId, String remoteAddress) {
-                        logger.info( "Connect handler: {}, {}", myId(), remoteAddress );
+                        //logger.info( "Connect handler: {}, {}", myId(), remoteAddress );
                     }
                     @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                     @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
                         logger.info( "Request: {}, {}", sessionId, requestId );
-                        getTcpService().getTaskPool().execute( () -> {
-                            try {
-                                Thread.sleep( TcpBase.rnd.nextInt( 500 ) + 100 );
-                            } catch (InterruptedException ignored) {
-                            }
-                            reply( sessionId, requestId, type, request );
-                        } );
+                        reply( sessionId, requestId, type, request );
                     }
                 };
             }
         };
-
     }
 
     public static class Client extends TcpClient {
@@ -78,30 +75,30 @@ public class HttpTest {
             return true;
         }
         @Override protected Optional<String> onSetAccess(String userId, String passWord, String clientAddress, String accessToken, String agent) {
-            return Optional.of( myId()+"Key");
+            return Optional.of( myId() + "Key" );
         }
 
         @Override
         public ConnectionHandler setConnectionHandler() {
 
             log.info( "set client handler" );
-            AtomicLong sessionId= new AtomicLong();
-            AtomicLong requestId= new AtomicLong();
+            AtomicLong sessionId = new AtomicLong();
+            AtomicLong requestId = new AtomicLong();
 
             return new ConnectionHandler() {
                 @Override protected void onMessageIn(Message m) {
                     log.info( "{} -> in {}", getTcpService().myId(), m.getType() );
-                    if(m.getType()== MessageType.REQUEST) {
-                        log.info( "{} -> request {}", getTcpService().myId(), m.getRequest().getType());
-                        sessionId.set(m.getRequest().getSessionId());
-                        requestId.set(m.getRequest().getRequestId());
+                    if (m.getType() == MessageType.REQUEST) {
+                        log.info( "{} -> request {}", getTcpService().myId(), m.getRequest().getType() );
+                        sessionId.set( m.getRequest().getSessionId() );
+                        requestId.set( m.getRequest().getRequestId() );
                     }
                 }
                 @Override protected void onMessageOut(Message m) {
                     log.info( "{} -> out {}", getTcpService().myId(), m.getType() );
-                    if(m.getType()== MessageType.REPLY) {
-                        assertEquals(sessionId.get(),m.getReply().getSessionId());
-                        assertEquals(requestId.get(),m.getReply().getRequestId());
+                    if (m.getType() == MessageType.REPLY) {
+                        assertEquals( sessionId.get(), m.getReply().getSessionId() );
+                        assertEquals( requestId.get(), m.getReply().getRequestId() );
                     }
                 }
                 @Override protected void onConnect(String ClientId, String remoteAddress) {
@@ -110,7 +107,7 @@ public class HttpTest {
                 @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
                 @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
-                        Thread.sleep( new Random().nextInt( 2000 ) );
+                        Thread.sleep( new Random().nextInt( 200 ) );
                         if (type == RequestType.PLAIN || type == RequestType.HTTP) {
                             reply( sessionId, requestId, type, requestMessage );
                         } else {
@@ -119,7 +116,7 @@ public class HttpTest {
                                     requestId,
                                     RequestType.NONE,
                                     null
-                                 );
+                            );
                         }
                     } catch (InterruptedException e) {
                         throw new RuntimeException( e );
@@ -128,8 +125,6 @@ public class HttpTest {
             };
         }
     }
-
-
 
     @BeforeEach
     void init() { server.start(); }
@@ -141,7 +136,7 @@ public class HttpTest {
     void test_start() throws InterruptedException {
         Client client1 = new Client( "leif", 4000, "" );
         client1.start();
-        client1.waitConnect( Duration.ofSeconds( 5 )  );
+        client1.waitConnect( Duration.ofSeconds( 5 ) );
         Thread.sleep( 1000 * 30 );
         client1.stop();
     }
@@ -151,25 +146,18 @@ public class HttpTest {
 
         Client client1 = new Client( "leif", 4000, "" );
         client1.start();
-        client1.waitConnect(Duration.ofSeconds( 10 ));
-        SessionHandler session = new SessionHandler() {
-            @Override
-            public void onReceive(long requestId, ByteString reply) {
-                log.info( "{} -> {} -> reply: {}", getSessionId(), requestId, reply.toStringUtf8() );
-            }
-        };
+        client1.waitConnect( Duration.ofSeconds( 10 ) );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<30000) {
+        while (System.currentTimeMillis() - start < 30000) {
             client1.getTcpRemoteServers().forEach( s -> {
 
                 try {
-                    s.getHandler().openSession( session, 10000 );
+                    SessionHandler session = s.getHandler().openSession( 10000 );
                     //session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
                     ByteString message = ByteString.copyFromUtf8( "hello sync" );
-                    ByteString reply = session.sendRequest( "", message, RequestType.PLAIN, 1000 );
+                    ByteString reply = session.sendRequest( "", message, RequestType.PLAIN );
                     assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
-
                 } catch (TcpException | Exception e) {
                     log.error( "Send fail: {}", e.getMessage() );
                 }
@@ -177,33 +165,22 @@ public class HttpTest {
             Thread.sleep( 1000 );
         }
         client1.stop();
-
     }
 
     @Test
     void check_request_from_server() throws InterruptedException {
 
         Client client1 = new Client( "leif", 4000, "" );
-        client1.start();
-        client1.waitConnect(Duration.ofSeconds( 10 ));
-        SessionHandler session = new SessionHandler() {
-            @Override
-            public void onReceive(long requestId, ByteString reply) {
-                log.info( "{} -> {} -> reply: {}", getSessionId(), requestId, reply.toStringUtf8() );
-            }
-        };
+        client1.startWaitConnect( Duration.ofSeconds( 2 ) );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<30000) {
+        while (System.currentTimeMillis() - start < 30000) {
             server.getActiveClients().forEach( (k, s) -> {
-
                 try {
-                    s.openSession( session, 10000 );
-                    //session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
+                    SessionHandler session = s.openSession( 10000 );
                     ByteString message = ByteString.copyFromUtf8( "hello sync" );
-                    ByteString reply = session.sendRequest( "", message, RequestType.PLAIN, 1000 );
+                    ByteString reply = session.sendRequest( "", message, RequestType.PLAIN );
                     assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
-
                 } catch (TcpException | Exception e) {
                     log.error( "Send fail: {}", e.getMessage() );
                 }
@@ -211,57 +188,106 @@ public class HttpTest {
             Thread.sleep( 1000 );
         }
         client1.stop();
+    }
 
+    @Test
+    void check_request_from_server_many() throws InterruptedException {
+
+        List<BasicsTest.TcpClient> tcpClients = new ArrayList<>( Arrays.asList(
+                new BasicsTest.TcpClient( "leif1", 4000, "" ),
+                new BasicsTest.TcpClient( "leif2", 4000, "" ),
+                new BasicsTest.TcpClient( "leif3", 4000, "" ),
+                new BasicsTest.TcpClient( "leif4", 4000, "" ),
+                new BasicsTest.TcpClient( "leif5", 4000, "" ),
+                new BasicsTest.TcpClient( "leif6", 4000, "" ),
+                new BasicsTest.TcpClient( "leif7", 4000, "" ),
+                new BasicsTest.TcpClient( "leif8", 4000, "" ),
+                new BasicsTest.TcpClient( "leif9", 4000, "" ),
+                new BasicsTest.TcpClient( "leif10", 4000, "" ),
+                new BasicsTest.TcpClient( "leif11", 4000, "" ),
+                new BasicsTest.TcpClient( "leif12", 4000, "" ),
+                new BasicsTest.TcpClient( "leif13", 4000, "" ),
+                new BasicsTest.TcpClient( "leif14", 4000, "" ),
+                new BasicsTest.TcpClient( "leif15", 4000, "" ),
+                new BasicsTest.TcpClient( "leif16", 4000, "" ),
+                new BasicsTest.TcpClient( "leif17", 4000, "" ),
+                new BasicsTest.TcpClient( "leif18", 4000, "" ),
+                new BasicsTest.TcpClient( "leif19", 4000, "" ),
+                new BasicsTest.TcpClient( "leif20", 4000, "" )
+        ) );
+
+        log.info( "Start clients: {}", tcpClients.size() );
+
+        Executor start_task = Executors.newFixedThreadPool( 5 );
+        ThreadPoolExecutor execute_task = ( ThreadPoolExecutor ) Executors.newFixedThreadPool( 25 );
+
+        tcpClients.forEach( c -> {
+            start_task.execute( () -> {
+
+                final BasicsTest.TcpClient client = c;
+                log.debug( "{} -> client prepared", client.myId() );
+
+                client.setReconnectTimeSeconds( 2 );
+                client.startWaitConnect( Duration.ofSeconds( 10 ) );
+                if (client.isReady()) {
+                    execute_task.execute( () -> {
+                        long start = System.currentTimeMillis();
+                        while (System.currentTimeMillis() - start < 30000) {
+                            try {
+                                ConnectionHandler handler = server.getActiveClients().get( client.myId() );
+                                SessionHandler session = handler.openSession( 20000 );
+                                //session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
+                                ByteString message = ByteString.copyFromUtf8( "hello sync asdasdasd asd asd asd asdasdasd  " +
+                                        "asd asd asd asd asd asd asd " + client.myId );
+                                ByteString reply = session.sendRequest( "", message, RequestType.PLAIN );
+                                assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
+                            } catch (TcpException | Exception e) {
+                                log.error( "Send fail: {}", e.getMessage() );
+                            }
+                        }
+                    } );
+                    log.debug( "{} -> client started", client.myId() );
+                } else {
+                    log.warn( "{} -> client NOT started", client.myId() );
+                }
+            } );
+        } );
+        Thread.sleep( 1000 );
+
+        log.info( "All started threads: {}", execute_task.getActiveCount() );
+
+        while (execute_task.getActiveCount() > 0) {
+            log.info( "Treads still running: {}", execute_task.getActiveCount() );
+            Thread.sleep( 1000 * 5 );
+        }
+
+        log.info( "Finish all: {}", execute_task.getActiveCount() );
     }
 
     @Test
     void check_request_logon_from_server() throws InterruptedException {
 
         Client client1 = new Client( "leif", 4000, "" );
-        client1.start();
-        client1.waitConnect(Duration.ofSeconds( 10 ));
-        SessionHandler session = new SessionHandler() {
-            @Override
-            public void onReceive(long requestId, ByteString reply) {
-                log.info( "{} -> {} -> reply: {}", getSessionId(), requestId, reply.toStringUtf8() );
-            }
-        };
+        client1.startWaitConnect(Duration.ofSeconds( 10 ) );
 
         long start = System.currentTimeMillis();
-        while(System.currentTimeMillis()-start<30000) {
+        while (System.currentTimeMillis() - start < 1000) {
             server.getActiveClients().forEach( (k, s) -> {
-
                 try {
-                    s.openSession( session, 10000 );
-                    ByteString message = ByteString.copyFromUtf8( "hello sync" );
-                    ByteString reply = session.sendRequest( "", message, RequestType.PLAIN, 1000 );
-                    assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
-
-                } catch (TcpException | Exception e) {
-                    log.error( "Send fail: {}", e.getMessage() );
+                    SessionHandler session = s.openSession(10000 );
+                    Optional<MessageOuterClass.Logon> access = session.logon( "leif","","","","" );
+                    assertTrue( access.isPresent() );
+                    assertTrue(access.get().getOkLogon());
+                    assertFalse(access.get().getAccessPath().isEmpty());
+                } catch (Exception e) {
+                    fail( "Send fail: " + e.getMessage() );
                 }
             } );
-            Thread.sleep( 1000 );
+            log.info( "loop" );
         }
-        client1.stop();
+        log.info( "end loop" );
 
-    }
-
-
-    @Test
-    void test_logon() throws InterruptedException {
-        Client client1 = new Client( "leif", 4000, "" );
-        client1.start();
-        client1.waitConnect(Duration.ofSeconds( 120 ));
-        assertTrue(server.getActiveClients().size()>0);
-        server.getActiveClients().values().forEach( c -> {
-            try {
-                Optional<String> accessKey = server.getTcpSession().logon(c.getRemoteClientId().get(),"","","","","");
-                assertTrue(accessKey.isPresent());
-            } catch (TcpException e) {
-                throw new RuntimeException( e );
-            }
-        });
+        Thread.sleep( 2000 );
         client1.stop();
     }
 
@@ -324,5 +350,4 @@ public class HttpTest {
 //        Thread.sleep(30000);
 //
 //    }
-
 }
