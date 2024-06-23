@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TcpBaseTest {
 
@@ -32,6 +31,6 @@ public class TcpBaseTest {
         Optional<String> accessKey = t.setAccess( "","","","", "" );
         assertTrue(accessKey.isPresent());
         assertEquals("12345",accessKey.get());
-        assertTrue( !t.getAccessCacheList().isEmpty() );
+        assertFalse( t.getAccessCacheList().isEmpty() );
     }
 }

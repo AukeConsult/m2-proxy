@@ -531,7 +531,7 @@ public abstract class ConnectionHandler {
                         }
 
                     } catch (Exception e) {
-                        log.warn("{} -> {} Request error: {}", tcpService.myId(),getRemoteClientId(),e);
+                        log.warn("{} -> {} Request error: {}, error {}", tcpService.myId(),getRemoteClientId(),e.getMessage());
                     }
 
                 });

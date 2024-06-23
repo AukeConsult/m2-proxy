@@ -52,7 +52,7 @@ public abstract class TcpServer extends TcpBase {
     @Override public final void serviceDisconnected(ConnectionHandler handler, String cause) {
 
         if(!clientHandles.containsKey( handler.getChannelId() )) {
-            log.error("myId() -> serviceDisconnected, handle dont exits {}",myId(), handler.getChannelId());
+            log.error("{} -> serviceDisconnected, handle dont exits {}",myId(), handler.getChannelId());
         }
 
         log.info( "{} -> got disconnect from client: {}, addr: {}, cause: {}, open clients: {}",

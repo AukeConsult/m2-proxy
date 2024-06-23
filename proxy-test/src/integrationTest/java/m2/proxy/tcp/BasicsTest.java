@@ -154,7 +154,7 @@ public class BasicsTest {
     }
 
     @BeforeEach
-    void init() throws NoSuchAlgorithmException {
+    void init()  {
 
         outBytes.set( 0 );
         inBytes.set( 0 );
@@ -293,16 +293,15 @@ public class BasicsTest {
         clients.forEach( c -> {
 
             tcpServer.getTaskPool().execute( () -> {
-                final TcpClient client = c;
-                client.setReconnectTimeSeconds( 1 );
-                assertEquals( 0, client.getTcpRemoteServers().size() );
+                c.setReconnectTimeSeconds( 1 );
+                assertEquals( 0, c.getTcpRemoteServers().size() );
 
-                client.startWaitConnect( Duration.ofSeconds( 5 ) );
-                assertEquals( 1, client.getTcpRemoteServers().size() );
-                assertFalse( client.getTcpRemoteServers().get( 0 ).connected.get() );
-                assertFalse( client.isConnected() );
-                assertEquals( 1, client.getTcpRemoteServers().size() );
-                assertEquals( 0, client.getActiveClients().size() );
+                c.startWaitConnect( Duration.ofSeconds( 5 ) );
+                assertEquals( 1, c.getTcpRemoteServers().size() );
+                assertFalse( c.getTcpRemoteServers().get( 0 ).connected.get() );
+                assertFalse( c.isConnected() );
+                assertEquals( 1, c.getTcpRemoteServers().size() );
+                assertEquals( 0, c.getActiveClients().size() );
             } );
         } );
 
@@ -486,7 +485,7 @@ public class BasicsTest {
         }
         Thread.sleep( 1000 );
 
-        clients.forEach( client -> client.stop() );
+        clients.forEach( ServiceBaseExecutor::stop );
 
         clients.forEach( client -> {
             log.info( "{} -> out: {}, in: {}", client.myId, client.outBytes.get(), client.inBytes.get() );
@@ -549,7 +548,7 @@ public class BasicsTest {
             client.setReconnectTimeSeconds( 2 );
             client.startWaitConnect( Duration.ofSeconds( 10 ) );
             if (client.isReady()) {
-                execute_task.execute( () -> client.runTest() );
+                execute_task.execute( client::runTest );
                 log.debug( "{} -> client started", client.myId() );
             } else {
                 log.warn( "{} -> client NOT started", client.myId() );
