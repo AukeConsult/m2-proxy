@@ -45,7 +45,7 @@ public class HttpHelperTest {
     void access_request () {
 
         RawHttpRequest request = rawHttp.parseRequest("GET localhost:8000/12345/hello HTTP/1.1");
-        assertEquals("12345",httpHelper.getAccessPath( request ));
+        assertEquals("12345",httpHelper.getAccessPath( request ).get());
         Optional<RawHttpRequest> requestOUT = httpHelper.forward("12345",request);
         assertTrue(requestOUT.isPresent());
         assertEquals("GET /hello HTTP/1.1",requestOUT.get().getStartLine().toString());
@@ -55,7 +55,7 @@ public class HttpHelperTest {
     void access_request_query () throws IOException {
 
         RawHttpRequest request = rawHttp.parseRequest("GET localhost:8000/12345/hello?id=1 HTTP/1.1");
-        assertEquals("12345",httpHelper.getAccessPath( request ));
+        assertEquals("12345",httpHelper.getAccessPath( request ).get());
         Optional<RawHttpRequest> requestOUT = httpHelper.forward("12345",request);
         assertTrue(requestOUT.isPresent());
         assertEquals("GET /hello?id=1 HTTP/1.1",requestOUT.get().getStartLine().toString());
@@ -65,7 +65,7 @@ public class HttpHelperTest {
     void access_request_no () {
 
         RawHttpRequest request = rawHttp.parseRequest("GET localhost:8000/12345/hello HTTP/1.1");
-        assertEquals("12345",httpHelper.getAccessPath( request ));
+        assertEquals("12345",httpHelper.getAccessPath( request ).get());
         Optional<RawHttpRequest> requestOUT = httpHelper.forward("/11111",request);
         assertFalse(requestOUT.isPresent());
     }

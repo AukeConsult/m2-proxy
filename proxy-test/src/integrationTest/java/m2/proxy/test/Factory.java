@@ -8,7 +8,7 @@ import m2.proxy.common.LocalForward;
 import m2.proxy.common.ContentResult;
 import m2.proxy.server.HttpForward;
 import m2.proxy.server.ProxyServer;
-import m2.proxy.server.AccessPath;
+import m2.proxy.server.Access;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.EagerHttpResponse;
@@ -28,8 +28,8 @@ public class Factory {
         DirectForward directForward = new DirectForward();
 
         HttpForward httpForward = new HttpForward( tcpPort, 10000 );
-        httpForward.getAccessSession().getAccessPaths().put( "test1", new AccessPath( "test1", "client1" ,null) );
-        httpForward.getAccessSession().getAccessPaths().put( "test2", new AccessPath( "test2", "client2" ,null) );
+        httpForward.getAccessSession().getAccessPaths().put( "test1", new Access( "test1", "client1" ,null) );
+        httpForward.getAccessSession().getAccessPaths().put( "test2", new Access( "test2", "client2" ,null) );
 
         DirectSite spark = new DirectSite( "/spark", "localhost:9999" );
         directForward.sites.put( spark.getPath(), spark );
@@ -125,7 +125,6 @@ public class Factory {
                         + "Accept: application/json\r\n"
                         + "\r\n"
                         + body;
-
             }
             log.info("get send: {}, body: {}",path,body);
             EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();

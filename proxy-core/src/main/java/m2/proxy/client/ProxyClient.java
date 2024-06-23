@@ -98,7 +98,7 @@ public class ProxyClient extends TcpClient implements Service {
                                                 .setOkLogon( true )
                                                 .setReply(
                                                         ByteString.copyFromUtf8(
-                                                                httpHelper.errReply( 404,
+                                                                httpHelper.reply( 404,
                                                                         ProxyStatus.NOTFOUND,
                                                                         request.getUri().getPath() )
                                                         )
@@ -113,7 +113,7 @@ public class ProxyClient extends TcpClient implements Service {
                     } catch (HttpException | InvalidProtocolBufferException e) {
                         log.warn( "Error request: {}", e.getMessage() );
                         ByteString reply = ByteString.copyFromUtf8(
-                                httpHelper.errReply( 404, ProxyStatus.FAIL, e.getMessage() )
+                                httpHelper.reply( 404, ProxyStatus.FAIL, e.getMessage() )
                         );
                         reply( sessionId, requestId, requestType, reply );
                     }

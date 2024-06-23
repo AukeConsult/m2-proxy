@@ -18,8 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AccessSession {
     private static final Logger log = LoggerFactory.getLogger( AccessSession.class );
 
-    private final Map<String, AccessPath> accessPaths = new ConcurrentHashMap<>();
-    public Map<String, AccessPath> getAccessPaths() {
+    private final Map<String, Access> accessPaths = new ConcurrentHashMap<>();
+    public Map<String, Access> getAccessPaths() {
         return accessPaths;
     }
 
@@ -53,7 +53,7 @@ public class AccessSession {
 
                 if (logon.isPresent()) {
                     log.info( "Got accessPath: {}, client: {}", logon.get().getAccessPath(), remoteClient );
-                    AccessPath a = new AccessPath( logon.get().getAccessPath(), tcpServer.myId(),session );
+                    Access a = new Access( logon.get().getAccessPath(), tcpServer.myId(),session );
                     accessPaths.put( a.getAccessPath(), a );
                     return logon;
                 } else {
@@ -78,7 +78,7 @@ public class AccessSession {
             int timeOut
     ) throws TcpException {
 
-        AccessPath access = accessPaths.getOrDefault( accessPath, null );
+        Access access = accessPaths.getOrDefault( accessPath, null );
         if (access!=null) {
 
             log.info( "client: {}, Remote Forward {}", access.getClientId(), path );

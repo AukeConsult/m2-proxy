@@ -1,5 +1,6 @@
 package m2.proxy.common;
 
+import com.google.gson.JsonObject;
 import rawhttp.core.*;
 import rawhttp.core.body.BodyReader;
 
@@ -35,18 +36,10 @@ public class HttpHelper {
         return Optional.of( response );
     }
 
-    public String errReply(int statusCode, ProxyStatus status, String message) {
-        return "HTTP/1.1 " +  statusCode + " " + status.toString() +"\r\n" +
-                "Content-Type: plain/text\r\n" +
-                "Content-Length: " + message.length() + "\r\n" +
-                "Server: Casa-IO\r\n" +
-                "Date: " + RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)) + "\r\n" +
-                "\r\n"+
-                message;
-    }
+
 
     public Optional<RawHttpResponse<?>> errResponse(ProxyStatus status, String message) {
-        return Optional.of(rawHttp.parseResponse(errReply(404, status, message)));
+        return Optional.of(rawHttp.parseResponse( reply(404, status, message)));
     }
 
     public RawHttpRequest updateRequest(String removePath, String destination, String hostAddress, RawHttpRequest request) {
@@ -114,5 +107,33 @@ public class HttpHelper {
         };
     }
 
+    public String reply(int statusCode, ProxyStatus status) {
+        return "HTTP/1.1 " +  statusCode + " " + status.toString() +"\r\n" +
+                "Content-Type: plain/text\r\n" +
+                "Content-Length: 0\r\n" +
+                "Server: Casa-IO\r\n" +
+                "Date: " + RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)) + "\r\n" +
+                "\r\n";
+    }
 
+    public String reply(int statusCode, ProxyStatus status, String message) {
+        return "HTTP/1.1 " +  statusCode + " " + status.toString() +"\r\n" +
+                "Content-Type: plain/text\r\n" +
+                "Content-Length: " + message.length() + "\r\n" +
+                "Server: Casa-IO\r\n" +
+                "Date: " + RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)) + "\r\n" +
+                "\r\n"+
+                message;
+    }
+
+    public String reply(int statusCode, ProxyStatus status, JsonObject jsonRet) {
+        String message = jsonRet.toString();
+        return "HTTP/1.1 " +  statusCode + " " + status.toString() +"\r\n" +
+                "Content-Type: application/json\r\n" +
+                "Content-Length: " + message.length() + "\r\n" +
+                "Server: Casa-IO\r\n" +
+                "Date: " + RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC)) + "\r\n" +
+                "\r\n"+
+                message;
+    }
 }

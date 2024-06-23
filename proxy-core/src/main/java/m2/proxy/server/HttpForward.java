@@ -4,7 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import m2.proxy.common.*;
-import m2.proxy.proto.MessageOuterClass;
+import m2.proxy.proto.MessageOuterClass.FunctionStatus;
+import m2.proxy.proto.MessageOuterClass.Logon;
 import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
@@ -51,28 +52,44 @@ public class HttpForward extends TcpServer implements Service {
             String accessToken = request.getHeaders().get( "Access-Token" ).toString();
             String agent = request.getHeaders().get( "Agent" ).toString();
 
-            Optional<MessageOuterClass.Logon> accessPath = getAccessSession().logon(
+            Optional<Logon> logon = getAccessSession().logon(
                     remoteClientId,
                     remoteAddress,
-                    jsonObj.get( "userid" ).getAsString(),
-                    jsonObj.get( "password" ).getAsString(),
+                    jsonObj.get( "userId" ).getAsString(),
+                    jsonObj.get( "passWord" ).getAsString(),
                     accessToken,
                     agent
             );
-            if(accessPath.isPresent() && accessPath.get().getOkLogon()) {
+            if(logon.isPresent() && logon.get().getStatus().equals( FunctionStatus.OK_LOGON )) {
+
+                JsonObject jsonRet = new JsonObject();
+                jsonRet.addProperty( "accessPath", logon.get().getAccessPath() );
+                jsonRet.addProperty( "userId", logon.get().getUserId() );
+                jsonRet.addProperty( "passWord", logon.get().getPassWord() );
+                jsonRet.addProperty( "accessToken", logon.get().getAccessToken() );
+                jsonRet.addProperty( "status", logon.get().getStatus().toString());
+                jsonRet.addProperty( "message", logon.get().getMessage());
+
                 return Optional.of( http.parseResponse(
-                        httpHelper.errReply( 200, ProxyStatus.OK, "" )
+                        httpHelper.reply( 200, ProxyStatus.OK, jsonRet )
                 ) );
+
             } else {
                 log.warn( "Rejected client: {}", myId );
+                JsonObject jsonRet = new JsonObject();
+                jsonRet.addProperty( "status", logon.get().getStatus().toString());
+                jsonRet.addProperty( "message", logon.get().getMessage());
                 return Optional.of( http.parseResponse(
-                        httpHelper.errReply( 403, ProxyStatus.REJECTED, "" )
+                        httpHelper.reply( 403, ProxyStatus.REJECTED )
                 ) );
             }
         } catch (IOException | TcpException e) {
             log.warn( "Exception client: {}, err: {}", myId, e.getMessage() );
+            JsonObject jsonRet = new JsonObject();
+            jsonRet.addProperty( "status", ProxyStatus.FAIL.toString());
+            jsonRet.addProperty( "message", e.getMessage());
             return Optional.of( http.parseResponse(
-                    httpHelper.errReply( 404, ProxyStatus.FAIL, e.getMessage() )
+                    httpHelper.reply( 404, ProxyStatus.FAIL, jsonRet )
             ) );
         }
     }
@@ -114,36 +131,35 @@ public class HttpForward extends TcpServer implements Service {
                         } else {
                             log.warn( "REJECTED REQUEST client: {}", myId );
                             return Optional.of( http.parseResponse(
-                                    httpHelper.errReply( 403, ProxyStatus.REJECTED, "no access" )
+                                    httpHelper.reply( 403, ProxyStatus.REJECTED, "no access" )
                             ) );
                         }
                     }
-
                 } catch (TcpException e) {
                     log.warn( "client: {}, err: {}", myId, e.getMessage() );
                     if(e.getStatus().equals( ProxyStatus.REJECTED )) {
                         return Optional.of(
                                 http.parseResponse(
-                                        httpHelper.errReply( 403, e.getStatus(), e.getMessage() )
+                                        httpHelper.reply( 403, e.getStatus(), e.getMessage() )
                                 )
                         );
                     } else if(e.getStatus().equals( ProxyStatus.FAIL )){
                         return Optional.of(
                                 http.parseResponse(
-                                        httpHelper.errReply( 500, e.getStatus(), e.getMessage() )
+                                        httpHelper.reply( 500, e.getStatus(), e.getMessage() )
                                 )
                         );
                     } else {
                         return Optional.of(
                                 http.parseResponse(
-                                        httpHelper.errReply( 404, e.getStatus(), e.getMessage() )
+                                        httpHelper.reply( 404, e.getStatus(), e.getMessage() )
                                 )
                         );
                     }
                 } catch (IOException e) {
                     return Optional.of(
                             http.parseResponse(
-                                    httpHelper.errReply( 500, ProxyStatus.FAIL, e.getMessage() )
+                                    httpHelper.reply( 500, ProxyStatus.FAIL, e.getMessage() )
                             )
                     );
                 }
@@ -152,6 +168,7 @@ public class HttpForward extends TcpServer implements Service {
         return Optional.empty();
     }
 
+    // handle requests
     public Optional<RawHttpResponse<?>> handleHttp(RawHttpRequest request) throws TcpException {
         if (request.getMethod().equals( "PUT" ) && request.getUri().getPath().startsWith( "/logon" )) {
             return logonRequest( request );
@@ -160,24 +177,17 @@ public class HttpForward extends TcpServer implements Service {
         }
     }
 
-    @Override
-    public ConnectionHandler setConnectionHandler() {
+    @Override public ConnectionHandler setConnectionHandler() {
         return new ConnectionHandler() {
-            @Override
-            protected void onMessageIn(Message m) { }
-            @Override
-            protected void onMessageOut(Message m) { }
-            @Override
-            protected void onConnect(String ClientId, String remoteAddress) { }
+            @Override protected void onMessageIn(Message m) { }
+            @Override protected void onMessageOut(Message m) { }
+            @Override protected void onConnect(String ClientId, String remoteAddress) { }
             @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
-            @Override
-            public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) { }
+            @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) { }
         };
     }
 
     private Service service;
-    @Override
-    public Service getService() { return service; }
-    @Override
-    public void setService(Service service) { this.service = service; }
+    @Override public Service getService() { return service; }
+    @Override public void setService(Service service) { this.service = service; }
 }

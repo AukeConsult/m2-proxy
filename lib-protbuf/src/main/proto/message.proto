@@ -2,6 +2,27 @@ syntax = "proto3";
 
 package m2.proxy.proto;
 
+enum PingStatus {
+  ONINIT = 0;
+  HASINIT = 1;
+  CONNECTED = 2;
+  DISCONNECTED = 3;
+  BUSY = 4;
+}
+
+enum FunctionStatus {
+  OK_LOGON = 0;
+  REJECTED_LOGON = 1;
+  UPDATE_OK = 3;
+  SERVICE_REJECT = 4;
+}
+
+enum ReplyStatus {
+  OK = 0;
+  TIMEOUT = 1;
+  SERVICE_DOWN = 3;
+}
+
 enum MessageType {
   INIT = 0;
   PING = 1;
@@ -11,14 +32,6 @@ enum MessageType {
   PUBLIC_KEY = 5;
   RAW_MESSAGE = 6;
   DISCONNECT = 7;
-}
-
-enum PingStatus {
-  ONINIT = 0;
-  HASINIT = 1;
-  CONNECTED = 2;
-  DISCONNECTED = 3;
-  BUSY = 4;
 }
 
 message Ping {
@@ -60,7 +73,8 @@ message Logon {
   string passWord = 5;
   string accessToken = 6;
   string agent = 7;
-  bool okLogon = 8;
+  FunctionStatus status = 8;
+  string message = 9;
 }
 
 message Init {
@@ -79,11 +93,7 @@ enum RequestType {
   LOGON = 4;
 }
 
-enum ReplyStatus {
-  OK = 0;
-  TIMEOUT = 1;
-  SERVICE_DOWN = 3;
-}
+
 
 message Request {
   int64 sessionId = 1;
@@ -111,3 +121,5 @@ message AesKey {
   int32 id = 1;
   bytes key = 2;
 }
+
+

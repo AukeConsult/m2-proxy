@@ -475,6 +475,7 @@ public abstract class ConnectionHandler {
 
                             Logon replyMessage;
                             if (logon.getClientId().equals( getTcpService().myId() )) {
+
                                 Optional<String> accessPath = getTcpService().setAccess(
                                         logon.getUserId(),
                                         logon.getPassWord(),
@@ -487,12 +488,15 @@ public abstract class ConnectionHandler {
                                 if (accessPath.isPresent()) {
                                     replyMessage = Logon.newBuilder()
                                             .setAccessPath( accessPath.get() )
-                                            .setOkLogon( true )
+                                            .setStatus( FunctionStatus.OK_LOGON )
+                                            .setMessage("successfully logged on")
+
                                             .build();
                                 } else {
                                     replyMessage = Logon.newBuilder()
                                             .setAccessPath( accessPath.get() )
-                                            .setOkLogon( false )
+                                            .setStatus( FunctionStatus.REJECTED_LOGON )
+                                            .setMessage("can not log on")
                                             .build();
                                 }
                                 reply(
@@ -503,9 +507,9 @@ public abstract class ConnectionHandler {
                                 );
                             } else {
                                 replyMessage = Logon.newBuilder()
-                                        .setOkLogon( false )
+                                        .setStatus( FunctionStatus.SERVICE_REJECT )
+                                        .setMessage("unknown clientid: " + logon.getClientId())
                                         .build();
-
                             }
                             reply(
                                     m.getRequest().getSessionId(),
