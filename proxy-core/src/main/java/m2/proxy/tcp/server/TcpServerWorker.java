@@ -23,13 +23,13 @@ class TcpServerWorker extends ConnectionWorker {
     private final TcpServer tcpServer;
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
-    private final String serverAddr;
-    private final int serverPort;
+    private final String connectAddress;
+    private final int ConnectPort;
 
     public TcpServerWorker(final TcpServer tcpServer) {
         this.tcpServer = tcpServer;
-        this.serverAddr = tcpServer.myAddress();
-        this.serverPort = tcpServer.myPort();
+        this.connectAddress = tcpServer.connectAddress();
+        this.ConnectPort = tcpServer.connectPort();
         this.bossGroup = new NioEventLoopGroup( tcpServer.nettyConnectThreads() );
         this.workerGroup = new NioEventLoopGroup( tcpServer.nettyWorkerThreads() );
     }
@@ -38,7 +38,7 @@ class TcpServerWorker extends ConnectionWorker {
     public void run() {
 
         if (!running.getAndSet( true )) {
-            log.info( "{} -> start netty loop", tcpServer.myId() );
+            log.info( "{} -> Start received connects", tcpServer.myId() );
             try {
 
                 ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -86,7 +86,7 @@ class TcpServerWorker extends ConnectionWorker {
                             }
                         } );
 
-                ChannelFuture f = serverBootstrap.bind( serverAddr, serverPort ).sync();
+                ChannelFuture f = serverBootstrap.bind( connectAddress, ConnectPort ).sync();
                 f.channel().closeFuture().sync();
                 f.channel().close();
 
@@ -95,16 +95,16 @@ class TcpServerWorker extends ConnectionWorker {
             } catch (Exception e) {
                 log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
             } finally {
-                log.info( "{} -> stop netty loop", tcpServer.myId() );
+                log.info( "{} -> Stopped received connects", tcpServer.myId() );
                 running.set( false );
                 stopping.set( false );
             }
         }
     }
-    @Override public void stop(boolean notifyRemote) {
+    @Override public void disconnect(boolean notifyRemote) {
         if (!stopping.getAndSet( true )) {
             new ArrayList<>( tcpServer.getClientHandles().values() )
-                    .forEach( handle -> tcpServer.doDisconnect( handle ) );
+                    .forEach( handle -> tcpServer.disconnect( handle ) );
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

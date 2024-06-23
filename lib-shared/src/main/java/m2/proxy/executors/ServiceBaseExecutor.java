@@ -67,6 +67,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
                             stopped.set(true);
                         } catch (Exception e) {
                             log.error("Error execute: {}",e.getMessage());
+                            e.printStackTrace();
                             stopped.set(true);
                         }
                         running.set(false);
@@ -80,7 +81,7 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
             } else {
                 running.set(false);
                 stopped.set(true);
-                log.debug("Not open / stopped");
+                log.trace("Not open / stopped");
             }
         }
     }
@@ -88,25 +89,22 @@ public abstract class ServiceBaseExecutor extends ServiceBase {
     @Override
     public final void stop() {
         if(!stopped.getAndSet(true)) {
-            log.debug("Stopping");
+            log.trace("Stopping");
             while(running.get()) {
                 forceClose();
                 synchronized (waitObject) {
                     waitObject.notify();
                 }
                 try {
-                    log.debug("wait running");
+                    log.trace("wait running");
                     Thread.sleep(25);
                 } catch (InterruptedException ignored) {
                 }
             }
-
             close();
-
             executor.shutdownNow();
             executor= null;
-
-            log.debug("stopped");
+            log.trace("stopped");
         }
     }
 

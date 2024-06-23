@@ -2,16 +2,16 @@ package m2.proxy.tcp.client;
 
 import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
-import m2.proxy.tcp.handlers.ConnectionWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.KeyPair;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings( "ALL" )
@@ -20,6 +20,7 @@ public abstract class TcpClient extends TcpBase {
 
     // parameteres
 
+    private String workerId;
     private final Map<String, TcpClientWorker> tcpRemoteServers = new ConcurrentHashMap<>();
     public List<TcpClientWorker> getTcpRemoteServers() { return new ArrayList<>(tcpRemoteServers.values()); }
 
@@ -47,15 +48,18 @@ public abstract class TcpClient extends TcpBase {
     }
     public boolean isReady() { return isRunning() && isConnected(); }
 
-    private void startWorker(String workerId) {
-        TcpClientWorker tcpClientWorker = new TcpClientWorker( workerId, this, this.myAddress, this.myPort );
+    private void startWorker() {
+        TcpClientWorker tcpClientWorker = new TcpClientWorker(this, this.connectAddress, this.connectPort );
         getTaskPool().execute( tcpClientWorker );
-        tcpRemoteServers.put( workerId, tcpClientWorker );
+        tcpRemoteServers.put( tcpClientWorker.getWorkerId(), tcpClientWorker );
     }
 
-    private void startServerWorkers() {
-        final String workerId = this.myAddress + this.myPort;
-        startWorker(workerId);
+    public TcpClient(String clientId, String serverAddr, int serverPort, String localAddress, KeyPair rsaKey) {
+        super(
+                clientId == null ? UUID.randomUUID().toString().substring( 0, 10 ) : clientId,
+                serverAddr, serverPort, localAddress, rsaKey
+        );
+        setLocalPort( 0 );
     }
 
     public TcpClient(String clientId, String serverAddr, int serverPort, String localAddress) {
@@ -68,28 +72,30 @@ public abstract class TcpClient extends TcpBase {
 
     @Override public final void connect(ConnectionHandler handler) { }
 
-    @Override public final void doDisconnect(ConnectionHandler handler) {
+    @Override public final void disconnect(ConnectionHandler handler) {
         // stop everything and notify remote server
-        handler.getConnectionWorker().stop( true );
+        handler.getConnectionWorker().disconnect( true );
     }
 
-    @Override public final void onDisconnected(ConnectionHandler handler) {
+    @Override public final void serviceDisconnected(ConnectionHandler handler, String cause) {
         // make thread to reconnect
+
+        log.info( "{} -> client start disconnect, cause: {}", myId(), cause);
         if(handler.getConnectionWorker().running.get()) {
+
             getTaskPool().execute( () -> {
 
                 TcpClientWorker tcpClientWorker = (TcpClientWorker)handler.getConnectionWorker();
                 // just stop everything without notify remote server
-                tcpClientWorker.stop( false );
+                tcpClientWorker.disconnect( false );
                 Thread.yield();
 
-                log.info( "{} -> Start server reconnect in: {} ms", myId(), reconnectTime() );
+                log.info( "{} -> Disconnected from server, {}, reconnect in: {} ms", myId(), cause, reconnectTime() );
                 try {
                     Thread.sleep( reconnectTime() );
                 } catch (InterruptedException ignored) {
                 }
-                log.info( "{} -> Client reconnect: {}:{}", myId(), this.myAddress, this.myPort );
-                startWorker( tcpClientWorker.getWorkerId() );
+                startWorker( );
                 Thread.yield();
 
             } );
@@ -98,8 +104,8 @@ public abstract class TcpClient extends TcpBase {
 
     @Override public void onStart() {
         log.debug( "Netty client start on {}:{}, connect to host -> {}:{}",
-                localAddress(), localPort(), myAddress, myPort );
-        startServerWorkers();
+                localAddress(), localPort(), connectAddress, connectPort );
+        startWorker( );
     }
 
     @Override public void onStop() {
@@ -107,8 +113,7 @@ public abstract class TcpClient extends TcpBase {
         tcpRemoteServers
                 .forEach( (k,s) -> {
                     s.getHandler().printWork();
-                    doDisconnect( s.getHandler() );
-                    getActiveClients().remove( s.getHandler().getRemoteClientId() );
+                    disconnect( s.getHandler() );
                 } );
 
         AtomicBoolean isrunning=new AtomicBoolean();

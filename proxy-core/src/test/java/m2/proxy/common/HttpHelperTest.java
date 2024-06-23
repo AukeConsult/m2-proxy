@@ -3,7 +3,6 @@ package m2.proxy.common;
 import org.junit.jupiter.api.Test;
 import rawhttp.core.RawHttp;
 import rawhttp.core.RawHttpRequest;
-import java.io.IOException;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;

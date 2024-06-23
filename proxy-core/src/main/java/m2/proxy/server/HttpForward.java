@@ -180,11 +180,11 @@ public class HttpForward extends TcpServer implements Service {
 
     @Override public ConnectionHandler setConnectionHandler() {
         return new ConnectionHandler() {
-            @Override protected void onMessageIn(Message m) { }
-            @Override protected void onMessageOut(Message m) { }
-            @Override protected void onConnect(String ClientId, String remoteAddress) { }
-            @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
-            @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) { }
+            @Override protected void handlerOnMessageIn(Message m) { }
+            @Override protected void handlerOnMessageOut(Message m) { }
+            @Override protected void handlerOnConnect(String ClientId, String remoteAddress) { }
+            @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) { }
+            @Override public void notifyOnRequest(long sessionId, long requestId, RequestType type, String destination, ByteString request) { }
         };
     }
 

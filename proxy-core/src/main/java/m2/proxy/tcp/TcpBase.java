@@ -20,8 +20,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     protected final AtomicInteger reconnectTime = new AtomicInteger();
     protected final String myId;
-    protected final String myAddress;
-    protected final int myPort;
+    protected final String connectAddress;
+    protected final int connectPort;
     private final String localAddress;
     protected int localPort;
     protected final KeyPair rsaKey;
@@ -31,8 +31,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
     protected int keepAliveTime = 10;
 
     // basic parameteres
-    public String myAddress() { return myAddress; }
-    public int myPort() { return myPort; }
+    public String connectAddress() { return connectAddress; }
+    public int connectPort() { return connectPort; }
     public String myId() { return myId; }
     public KeyPair rsaKey() { return rsaKey; }
     public String localAddress() { return localAddress; }
@@ -104,12 +104,12 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public TcpBase() {
         this.myId = "";
-        this.myAddress = "";
-        this.myPort = 0;
+        this.connectAddress = "";
+        this.connectPort = 0;
         this.localAddress = "";
         this.rsaKey = null;
     }
-    public TcpBase(String myId, String myAddress, int myPort, String localAddress, KeyPair rsaKey) {
+    public TcpBase(String myId, String connectAddress, int connectPort, String localAddress, KeyPair rsaKey) {
 
         if (rsaKey == null) {
             try {
@@ -122,18 +122,17 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         } else {
             this.rsaKey = rsaKey;
         }
-
         this.myId = myId;
-        this.myAddress = myAddress == null ? "127.0.0.1" : myAddress;
-        this.myPort = myPort;
+        this.connectAddress = connectAddress == null ? "127.0.0.1" : connectAddress;
+        this.connectPort = connectPort;
         this.localAddress = localAddress == null ? "127.0.0.1" : localAddress;
         rnd.setSeed( System.currentTimeMillis() );
     }
 
     public abstract ConnectionHandler setConnectionHandler();
     public abstract void connect(ConnectionHandler handler);
-    public abstract void doDisconnect(ConnectionHandler handler);
-    public abstract void onDisconnected(ConnectionHandler handler);
+    public abstract void disconnect(ConnectionHandler handler);
+    public abstract void serviceDisconnected(ConnectionHandler handler, String cause);
     public abstract void onStart();
     public abstract void onStop();
 

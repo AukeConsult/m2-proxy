@@ -1,7 +1,6 @@
 package m2.proxy.tcp.handlers;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ConnectionWorker implements Runnable {
 
@@ -16,6 +15,6 @@ public abstract class ConnectionWorker implements Runnable {
     }
 
     public boolean isReady() { return running.get() && connected.get() && !stopping.get(); }
-    public abstract void stop(boolean notifyRemote);
+    public abstract void disconnect(boolean notifyRemote);
 
 }

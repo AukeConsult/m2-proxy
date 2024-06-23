@@ -2,7 +2,7 @@
 
     <property name="logDirectory" value="./logs"/>
     <property name="logFile" value="proxy-server"/>
-    <property name="pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %level %logger - %msg%n"/>
+    <property name="pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %level %logger{0} - %msg%n"/>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logDirectory}/${logFile}.log</file>
@@ -33,8 +33,6 @@
     <logger name="io.netty" level="ERROR" additivity="false"/>
     <logger name="org.eclipse" level="ERROR" additivity="false"/>
     <logger name="spark.embeddedserver" level="ERROR" additivity="false"/>
-
-
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

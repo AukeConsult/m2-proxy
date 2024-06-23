@@ -37,6 +37,19 @@ public class BasicsTest {
 
     final Random rnd = new Random();
 
+    static KeyPair rsaKeyClient;
+    static KeyPair getRsaKey()  {
+        try {
+            if(rsaKeyClient==null) {
+                KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
+                generator.initialize( 2048 );
+                rsaKeyClient = generator.generateKeyPair();
+            }
+        } catch (NoSuchAlgorithmException ignore) {
+        }
+        return rsaKeyClient;
+    }
+
     public static class TcpClient extends m2.proxy.tcp.client.TcpClient {
         private static final Logger log = LoggerFactory.getLogger( TcpClient.class );
 
@@ -46,8 +59,8 @@ public class BasicsTest {
         public AtomicInteger inMessages = new AtomicInteger();
         public AtomicInteger inDisconnect = new AtomicInteger();
 
-        public TcpClient(String clientId, int ServerPort, String localport) {
-            super( clientId, "127.0.0.1", ServerPort, localport );
+        public TcpClient(String clientId, int ServerPort, String localport)  {
+            super( clientId, "127.0.0.1", ServerPort, localport, getRsaKey() );
         }
 
         @Override protected boolean onCheckAccess(String accessPath, String remoteAddress, String accessToken, String agent) {
@@ -59,31 +72,29 @@ public class BasicsTest {
         @Override
         public ConnectionHandler setConnectionHandler() {
 
-            log.debug( "client handler" );
+            log.trace( "client handler" );
             return new ConnectionHandler() {
-                @Override protected void onMessageIn(Message m) {
+                @Override protected void handlerOnMessageIn(Message m) {
                     //log.info( "from {} -> {}", getRemoteClientId(),m.getType() );
                     if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                         inMessages.incrementAndGet();
                         inBytes.addAndGet( m.getSubMessage().toByteArray().length );
                     }
                     if (m.getType() == MessageType.DISCONNECT) {
-                        log.info( "{} -> got disconnect from {}", myId(), getRemoteClientId() );
                         inDisconnect.incrementAndGet();
                     }
                 }
-                @Override protected void onMessageOut(Message m) {
-                    //log.info( "to {} -> {}", getRemoteClientId(),m.getType() );
+                @Override protected void handlerOnMessageOut(Message m) {
                     if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                         outMessages.incrementAndGet();
                         outBytes.addAndGet( m.getSubMessage().toByteArray().length );
                     }
                 }
-                @Override protected void onConnect(String ClientId, String remoteAddress) { }
-                @Override protected void onDisonnect(String ClientId, String remoteAddress) {
-                    log.info( "{} -> disconnect from: {}", myId(), getRemoteClientId() );
+                @Override protected void handlerOnConnect(String ClientId, String remoteAddress) { }
+                @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) {
+                    log.trace( "{} -> disconnect from: {}", myId(), getRemoteClientId() );
                 }
-                @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
+                @Override public void notifyOnRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
                         Thread.sleep( new Random().nextInt( 2000 ) );
                         if (type == RequestType.PLAIN || type == RequestType.HTTP) {
@@ -112,7 +123,7 @@ public class BasicsTest {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
-                    @Override protected void onMessageIn(Message m) {
+                    @Override protected void handlerOnMessageIn(Message m) {
                         //log.info( "from {} -> {}", getRemoteClientId(),m.getType() );
                         if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                             inMessages.incrementAndGet();
@@ -124,7 +135,7 @@ public class BasicsTest {
                             }
                         }
                     }
-                    @Override protected void onMessageOut(Message m) {
+                    @Override protected void handlerOnMessageOut(Message m) {
                         //log.info( "to {} -> {}", getRemoteClientId(),m.getType() );
                         if (m.getType() == MessageType.RAW_MESSAGE || m.getType() == MessageType.MESSAGE) {
                             outMessages.incrementAndGet();
@@ -134,16 +145,17 @@ public class BasicsTest {
                             log.info( "{} -> Disconnect: {}", myId(), getRemoteClientId() );
                         }
                     }
-                    @Override protected void onConnect(String ClientId, String remoteAddress) { }
-                    @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
-                    @Override protected void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) { }
+                    @Override protected void handlerOnConnect(String ClientId, String remoteAddress) { }
+                    @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) { }
+                    @Override protected void notifyOnRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) { }
                 };
             }
         };
     }
 
     @BeforeEach
-    void init() {
+    void init() throws NoSuchAlgorithmException {
+
         outBytes.set( 0 );
         inBytes.set( 0 );
         outMessages.set( 0 );
@@ -151,11 +163,15 @@ public class BasicsTest {
 
         tcpServer.start();
         assertTrue( tcpServer.isRunning() );
+        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
 
     }
 
     @AfterEach
-    void end() { tcpServer.stop(); }
+    void end() {
+        tcpServer.stop();
+        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
+    }
 
     @Test
     void server_start_stop() throws InterruptedException {
@@ -163,11 +179,51 @@ public class BasicsTest {
         Thread.sleep( 1000 * 5 );
         assertTrue( tcpServer.isRunning() );
         tcpServer.stop();
+        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
         assertFalse( tcpServer.isRunning() );
         Thread.sleep( 1000 * 10 );
         tcpServer.start();
         assertTrue( tcpServer.isRunning() );
         Thread.sleep( 1000 * 10 );
+    }
+
+    @Test
+    void client_disconnect() throws InterruptedException {
+
+        TcpClient client1 = new TcpClient( "leif", 4000, "" );
+        client1.setReconnectTimeSeconds( 5 );
+        client1.startWaitConnect( Duration.ofSeconds( 2 ) );
+        assertTrue( client1.isConnected() );
+        Thread.sleep( 2000 );
+
+        assertEquals( 1, client1.getTcpRemoteServers().size() );
+        assertEquals( 1, client1.getActiveClients().size() );
+        assertEquals( 1, tcpServer.getActiveClients().size() );
+        Thread.sleep( 2000 );
+
+        log.info("client stop");
+        client1.stop();
+        Thread.sleep( 5000 );
+
+        assertEquals( 0, tcpServer.getClientHandles().size() );
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+        assertEquals( 0, client1.getActiveClients().size() );
+        assertEquals( 0, client1.getTcpRemoteServers().size() );
+        assertFalse( client1.isConnected() );
+
+        log.info("client start");
+        client1.startWaitConnect( Duration.ofSeconds( 2 ) );
+        Thread.sleep( 5000 );
+
+        assertEquals( 1, client1.getTcpRemoteServers().size() );
+        assertEquals( 1, client1.getActiveClients().size() );
+        assertEquals( 1, tcpServer.getActiveClients().size() );
+        Thread.sleep( 2000 );
+
+        tcpServer.stop();
+
+        Thread.sleep( 10000 );
+
     }
 
     @Test
@@ -178,15 +234,14 @@ public class BasicsTest {
 
         client1.startWaitConnect( Duration.ofSeconds( 2 ) );
         assertTrue( client1.isConnected() );
+        Thread.sleep( 2000 );
+
         assertEquals( 1, client1.getTcpRemoteServers().size() );
         assertEquals( 1, client1.getActiveClients().size() );
-
         assertEquals( 1, tcpServer.getActiveClients().size() );
+        Thread.sleep( 2000 );
 
-        Thread.sleep( 1000 * 10 );
-
-        log.info("server stopped");
-
+        log.info("server stop");
         tcpServer.stop();
         Thread.sleep( 1000 * 5 );
 
@@ -201,26 +256,23 @@ public class BasicsTest {
         assertEquals( 0, client1.getActiveClients().size() );
         assertEquals( 1, client1.getTcpRemoteServers().size() );
 
+        log.info("server start again");
         tcpServer.start();
-        Thread.sleep( 1000 * 5 );
-
-        assertEquals( 1, tcpServer.getClientHandles().size() );
-        assertEquals( 1, tcpServer.getActiveClients().size() );
+        Thread.sleep( 10000 );
         assertEquals( 1, client1.getActiveClients().size() );
         assertEquals( 1, client1.getTcpRemoteServers().size() );
         assertTrue( client1.isConnected() );
 
+        assertEquals( 1, tcpServer.getClientHandles().size() );
+        assertEquals( 1, tcpServer.getActiveClients().size() );
 
     }
 
     @Test
-    void server_stop_client_try_reconnect() throws InterruptedException {
+    void server_stopped_client_try_reconnect() throws InterruptedException {
 
         tcpServer.stop();
         Thread.sleep( 2 * 1000 );
-        tcpServer.start();
-        Thread.sleep( 2 * 1000 );
-        tcpServer.stop();
 
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
@@ -242,10 +294,10 @@ public class BasicsTest {
 
             tcpServer.getTaskPool().execute( () -> {
                 final TcpClient client = c;
-                client.setReconnectTimeSeconds( 5 );
+                client.setReconnectTimeSeconds( 1 );
                 assertEquals( 0, client.getTcpRemoteServers().size() );
 
-                client.startWaitConnect( Duration.ofSeconds( 2 ) );
+                client.startWaitConnect( Duration.ofSeconds( 5 ) );
                 assertEquals( 1, client.getTcpRemoteServers().size() );
                 assertFalse( client.getTcpRemoteServers().get( 0 ).connected.get() );
                 assertFalse( client.isConnected() );
@@ -264,8 +316,9 @@ public class BasicsTest {
         assertEquals( 0, tcpServer.getActiveClients().size() );
 
         log.info( "start server" );
+        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
         tcpServer.start();
-        Thread.sleep( 15 * 1000 );
+        Thread.sleep( 20 * 1000 );
 
         clients.forEach( client -> {
             assertEquals( 1, client.getTcpRemoteServers().size() );
@@ -273,8 +326,8 @@ public class BasicsTest {
             assertTrue( client.isConnected() );
         } );
 
-        assertEquals( 10, tcpServer.getClientHandles().size() );
-        assertEquals( 10, tcpServer.getActiveClients().size() );
+        assertEquals( 10, tcpServer.getClientHandles().size() , 0);
+        assertEquals( 10, tcpServer.getActiveClients().size() ,0);
 
         log.info( "stop" );
         tcpServer.stop();
@@ -333,16 +386,6 @@ public class BasicsTest {
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
 
-    }
-
-    @Test
-    void one_client() throws InterruptedException {
-
-        TcpClient client1 = new TcpClient( "leif1", 4000, "" );
-        client1.startWaitConnect( Duration.ofSeconds( 30 ) );
-        assertTrue( client1.isRunning() && client1.isConnected() );
-        Thread.sleep( 1000 * 10 );
-        client1.stop();
     }
 
     @Test
@@ -408,7 +451,7 @@ public class BasicsTest {
     }
 
     @Test
-    void many_clients_send_message() throws InterruptedException {
+    void many_clients_send_messages() throws InterruptedException {
 
         log.info( "many_clients" );
 
@@ -455,7 +498,7 @@ public class BasicsTest {
     public static class RandomClient extends TcpClient {
 
         public RandomClient(String serverHost, int serverPort) {
-            super( null, serverPort, serverHost );
+            super( null, serverPort, serverHost);
         }
 
         protected void runTest() {
@@ -484,7 +527,7 @@ public class BasicsTest {
     }
 
     @Test
-    void random_many_clients() throws InterruptedException {
+    void random_many_clients() throws InterruptedException, NoSuchAlgorithmException {
 
         log.info( "random_clients" );
         List<RandomClient> tcpClients = new ArrayList<>();
@@ -493,7 +536,6 @@ public class BasicsTest {
             tcpClients.add( c );
             log.info( "initiate client: {}, {}", c.myId(), i );
         }
-
         log.info( "Start clients: {}", tcpClients.size() );
 
         Executor start_task = Executors.newFixedThreadPool( 5 );
@@ -524,7 +566,7 @@ public class BasicsTest {
         while (execute_task.getActiveCount() > 0) {
             log.info( "Treads still running: {}", execute_task.getActiveCount() );
             Thread.sleep( 1000 * 5 );
-        } ;
+        }
 
         Thread.sleep( 1000 * 10 );
         tcpClients.forEach( c -> log.info( "{} -> out: {}, in: {}, diff: {}",
@@ -534,7 +576,10 @@ public class BasicsTest {
                 c.outBytes.get() - c.inBytes.get() )
         );
 
-        Thread.sleep( 1000 * 10 );
+        Thread.sleep( 15000 );
+
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+        assertEquals( 0, tcpServer.getClientHandles().size() );
 
         tcpClients.forEach( c -> assertEquals( c.outBytes.get(), c.inBytes.get() ) );
         tcpClients.forEach( ServiceBaseExecutor::stop );

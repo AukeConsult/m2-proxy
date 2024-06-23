@@ -56,14 +56,14 @@ public class ProxyClient extends TcpClient implements Service {
         return new ConnectionHandler() {
             final HttpHelper httpHelper = new HttpHelper();
             @Override
-            protected void onMessageIn(Message m) { }
+            protected void handlerOnMessageIn(Message m) { }
             @Override
-            protected void onMessageOut(Message m) { }
+            protected void handlerOnMessageOut(Message m) { }
             @Override
-            protected void onConnect(String ClientId, String remoteAddress) { }
-            @Override protected void onDisonnect(String ClientId, String remoteAddress) {}
+            protected void handlerOnConnect(String ClientId, String remoteAddress) { }
+            @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) {}
             @Override
-            protected void onRequest(long sessionId, long requestId, RequestType requestType, String address, ByteString requestBytes) {
+            protected void notifyOnRequest(long sessionId, long requestId, RequestType requestType, String address, ByteString requestBytes) {
                 getTcpService().getTaskPool().execute( () -> {
 
                     try {
@@ -127,7 +127,7 @@ public class ProxyClient extends TcpClient implements Service {
         super.onStart();
         log.info( "Proxy clientId {}, start on site port: {}, proxy port: {}:{}",
                 myId(),
-                clientSite.getSitePort() , myAddress(), myPort() );
+                clientSite.getSitePort() , connectAddress(), connectPort() );
         clientSite.start();
     }
 

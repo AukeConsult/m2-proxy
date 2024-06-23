@@ -40,15 +40,15 @@ public class ProxyTcpServer {
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
                     @Override
-                    protected void onMessageIn(MessageOuterClass.Message m) { }
+                    protected void handlerOnMessageIn(MessageOuterClass.Message m) { }
                     @Override
-                    protected void onMessageOut(MessageOuterClass.Message m) { }
+                    protected void handlerOnMessageOut(MessageOuterClass.Message m) { }
                     @Override
-                    protected void onConnect(String ClientId, String remoteAddress) { }
+                    protected void handlerOnConnect(String ClientId, String remoteAddress) { }
                     @Override
-                    protected void onDisonnect(String ClientId, String remoteAddress) { }
+                    protected void handlerOnDisonnect(String ClientId, String remoteAddress) { }
                     @Override
-                    protected void onRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String address, ByteString request) { }
+                    protected void notifyOnRequest(long sessionId, long requestId, MessageOuterClass.RequestType type, String address, ByteString request) { }
                 };
             }
         };

@@ -117,7 +117,7 @@ public class RunServicesTest {
         assertEquals( 404, resp.get().getStatusCode() );
         assertEquals( "NOTFOUND", resp.get().getStartLine().getReason() );
 
-        resp = Factory.putRest( 9000, "/spark/echo", "how are you" );
+        resp = Factory.putRest( 9000, "how are you" );
         assertTrue( resp.isPresent() );
         assertEquals( 200, resp.get().getStatusCode() );
         assertEquals( "how are you", resp.get().getBody().map( httpHelper.decodeBody() ).orElse( "" ) );

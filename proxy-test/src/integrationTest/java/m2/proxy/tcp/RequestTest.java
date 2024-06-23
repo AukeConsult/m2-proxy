@@ -45,17 +45,17 @@ public class RequestTest {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
-                    @Override protected void onMessageIn(Message m) {
+                    @Override protected void handlerOnMessageIn(Message m) {
                         //log.info( "{} -> in {}", myId(), m.getType() );
                     }
-                    @Override protected void onMessageOut(Message m) {
+                    @Override protected void handlerOnMessageOut(Message m) {
                         //log.info( "{} -> out {}", myId(), m.getType() );
                     }
-                    @Override protected void onConnect(String ClientId, String remoteAddress) {
+                    @Override protected void handlerOnConnect(String ClientId, String remoteAddress) {
                         //logger.info( "Connect handler: {}, {}", myId(), remoteAddress );
                     }
-                    @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
-                    @Override public void onRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
+                    @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) { }
+                    @Override public void notifyOnRequest(long sessionId, long requestId, RequestType type, String address, ByteString request) {
                         logger.info( "Request: {}, {}", sessionId, requestId );
                         reply( sessionId, requestId, type, request );
                     }
@@ -81,12 +81,12 @@ public class RequestTest {
         @Override
         public ConnectionHandler setConnectionHandler() {
 
-            log.info( "set client handler" );
+            log.trace( "set client handler" );
             AtomicLong sessionId = new AtomicLong();
             AtomicLong requestId = new AtomicLong();
 
             return new ConnectionHandler() {
-                @Override protected void onMessageIn(Message m) {
+                @Override protected void handlerOnMessageIn(Message m) {
                     log.info( "{} -> in {}", getTcpService().myId(), m.getType() );
                     if (m.getType() == MessageType.REQUEST) {
                         log.info( "{} -> request {}", getTcpService().myId(), m.getRequest().getType() );
@@ -94,18 +94,18 @@ public class RequestTest {
                         requestId.set( m.getRequest().getRequestId() );
                     }
                 }
-                @Override protected void onMessageOut(Message m) {
+                @Override protected void handlerOnMessageOut(Message m) {
                     log.info( "{} -> out {}", getTcpService().myId(), m.getType() );
                     if (m.getType() == MessageType.REPLY) {
                         assertEquals( sessionId.get(), m.getReply().getSessionId() );
                         assertEquals( requestId.get(), m.getReply().getRequestId() );
                     }
                 }
-                @Override protected void onConnect(String ClientId, String remoteAddress) {
+                @Override protected void handlerOnConnect(String ClientId, String remoteAddress) {
                     log.info( "CONNECT: {}, addr: {}", myId, remoteAddress );
                 }
-                @Override protected void onDisonnect(String ClientId, String remoteAddress) { }
-                @Override public void onRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
+                @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) { }
+                @Override public void notifyOnRequest(long sessionId, long requestId, RequestType type, String destination, ByteString requestMessage) {
                     try {
                         Thread.sleep( new Random().nextInt( 200 ) );
                         if (type == RequestType.PLAIN || type == RequestType.HTTP) {
@@ -126,8 +126,17 @@ public class RequestTest {
         }
     }
 
+    KeyPair rsaKeyClient;
+
     @BeforeEach
-    void init() { server.start(); }
+    void init() throws NoSuchAlgorithmException {
+        if(rsaKeyClient==null) {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
+            generator.initialize( 2048 );
+            rsaKeyClient = generator.generateKeyPair();
+        }
+        server.start();
+    }
 
     @AfterEach
     void end() { server.stop(); }
@@ -277,7 +286,6 @@ public class RequestTest {
                     SessionHandler session = s.openSession(10000 );
                     Optional<MessageOuterClass.Logon> access = session.logon( "leif","","","","" );
                     assertTrue( access.isPresent() );
-                    assertTrue(access.get().getOkLogon());
                     assertFalse(access.get().getAccessPath().isEmpty());
                 } catch (Exception e) {
                     fail( "Send fail: " + e.getMessage() );

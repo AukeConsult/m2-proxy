@@ -18,7 +18,7 @@ public class TcpBaseTest {
             }
             @Override public ConnectionHandler setConnectionHandler() { return null; }
             @Override public void connect(ConnectionHandler handler) { }
-            @Override public void doDisconnect(ConnectionHandler handler) { }
+            @Override public void disconnect(ConnectionHandler handler) { }
             @Override public void onDisconnected(ConnectionHandler handler) { }
             @Override public void onStart() { }
             @Override public void onStop() { }

@@ -1,4 +1,5 @@
 plugins {
+    id 'common.java-conventions'
     id("common.java-netty")
 }
 
@@ -7,10 +8,10 @@ apply plugin: 'java'
 dependencies {
 
     implementation 'com.athaydes.rawhttp:rawhttp-core:2.6.0'
-    implementation 'com.sparkjava:spark-core:2.9.1'
     implementation project(':proxy-core')
     implementation project(':lib-protbuf')
     implementation project(":lib-shared")
+    implementation 'com.sparkjava:spark-core:2.9.1'
 }
 
 configurations {

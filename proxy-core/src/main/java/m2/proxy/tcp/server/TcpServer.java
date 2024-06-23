@@ -31,26 +31,46 @@ public abstract class TcpServer extends TcpBase {
         keepAliveTime = 15;
     }
 
-    @Override public final void doDisconnect(ConnectionHandler handler) {
+    @Override public final void disconnect(ConnectionHandler handler) {
 
-        // remove from active list
-        clientHandles.remove( handler.getChannelId() );
-        Thread.yield();
-        handler.disconnectRemote();
-        log.debug( "{} -> disconnect ch: {}, client: {}, addr: {}",
-                myId(),
-                handler.getChannelId(),
-                handler.getRemoteClientId(),
-                handler.getRemotePublicAddress()
-        );
+        if(clientHandles.containsKey( handler.getChannelId() )) {
+
+            // remove from active list
+            clientHandles.remove( handler.getChannelId() );
+            Thread.yield();
+            handler.disconnectRemote();
+            log.info( "{} -> disconnect client: {}, addr: {}, handlers: {}",
+                    myId(),
+                    handler.getRemoteClientId(),
+                    handler.getRemotePublicAddress(),
+                    clientHandles.size()
+            );
+        }
+
     }
 
-    @Override public final void onDisconnected(ConnectionHandler handler) { }
+    @Override public final void serviceDisconnected(ConnectionHandler handler, String cause) {
 
+        if(!clientHandles.containsKey( handler.getChannelId() )) {
+            log.error("myId() -> serviceDisconnected, handle dont exits {}",myId(), handler.getChannelId());
+        }
+
+        log.info( "{} -> got disconnect from client: {}, addr: {}, cause: {}, open clients: {}",
+                myId(),
+                handler.getRemoteClientId(),
+                handler.getRemotePublicAddress(),
+                cause,
+                clientHandles.size()
+        );
+
+        handler.removeActiveHandler();
+        clientHandles.remove( handler.getChannelId() );
+        Thread.yield();
+
+    }
     @Override public final void connect(ConnectionHandler handler) {
         handler.startPing( 2 );
     }
-
     @Override protected boolean onCheckAccess(String accessPath, String clientAddress, String accessToken, String agent) {
         return true;
     }
@@ -65,7 +85,7 @@ public abstract class TcpServer extends TcpBase {
     }
 
     @Override public final void onStop() {
-        tcpServerWorker.stop( true );
+        tcpServerWorker.disconnect( true );
         while (tcpServerWorker.running.get() && tcpServerWorker.stopping.get()) {
             try {
                 Thread.sleep( 10 );

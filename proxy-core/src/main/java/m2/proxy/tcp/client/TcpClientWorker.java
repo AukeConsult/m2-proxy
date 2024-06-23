@@ -13,6 +13,7 @@ import m2.proxy.tcp.handlers.MessageDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings( { "UnusedReturnValue", "NullableProblems" } )
@@ -20,18 +21,14 @@ public class TcpClientWorker extends ConnectionWorker {
     private static final Logger log = LoggerFactory.getLogger( TcpClientWorker.class );
 
     private final TcpClient tcpClient;
-    private final String workerId;
-    private final String myAddress;
-    private final int myPort;
-
+    private final String connectAddress;
+    private final int connectPort;
     private final AtomicReference<ConnectionHandler> connectionHandler = new AtomicReference<>();
 
-    public TcpClient getTcpClient() { return tcpClient; }
-    public String getWorkerId() { return workerId; }
-    public String getMyAddress() { return myAddress; }
-    public int getMyPort() { return myPort; }
-
     private EventLoopGroup bossGroup;
+
+    private final String workerId;
+    public String getWorkerId() { return workerId; }
 
     public ConnectionHandler getHandler() {
         if (connectionHandler.get() == null) {
@@ -46,26 +43,27 @@ public class TcpClientWorker extends ConnectionWorker {
     public boolean sendMessage(String message) { return getHandler().sendMessage( message ); }
     public boolean sendRawMessage(byte[] bytes) { return getHandler().sendRawMessage( bytes ); }
 
-    public TcpClientWorker(final String workerId, final TcpClient tcpClient, String myAddress, int myPort) {
+    public TcpClientWorker(final TcpClient tcpClient, String connectAddress, int connectPort) {
         this.tcpClient = tcpClient;
-        this.workerId = workerId;
-        this.myAddress = myAddress;
-        this.myPort = myPort;
+        this.workerId = connectAddress+connectPort;
+        this.connectAddress = connectAddress;
+        this.connectPort = connectPort;
         this.bossGroup = new NioEventLoopGroup(2);
     }
 
     @Override
-    public void stop(boolean notifyRemote) {
+    public void disconnect(boolean notifyRemote) {
 
+        log.trace( "{} -> disconnect, notify: {}", tcpClient.myId(), notifyRemote );
         if (!stopping.getAndSet( true )) {
-
             if (connectionHandler.get() != null) {
-                log.debug( "{} -> tcp client stopped: {}", tcpClient.myId(), connectionHandler.get().getRemoteClientId() );
                 if (notifyRemote) {
                     connectionHandler.get().disconnectRemote();
                 } else {
                     connectionHandler.get().disconnect();
                 }
+            } else {
+                log.warn( "{} -> connections handler missing", tcpClient.myId(), notifyRemote );
             }
             bossGroup.shutdownGracefully();
             // remove connection handler
@@ -76,6 +74,7 @@ public class TcpClientWorker extends ConnectionWorker {
                 } catch (InterruptedException e) {
                 }
             }
+            log.info( "{} -> disconnected", tcpClient.myId() );
         }
     }
 
@@ -84,7 +83,6 @@ public class TcpClientWorker extends ConnectionWorker {
 
         if (!running.getAndSet( true )) {
 
-            log.debug( "{} -> Server thread start", tcpClient.myId() );
             try {
 
                 Bootstrap bootstrap = new Bootstrap();
@@ -111,21 +109,23 @@ public class TcpClientWorker extends ConnectionWorker {
                             }
                         } );
 
-                ChannelFuture f = bootstrap.connect( myAddress, myPort ).sync();
+                log.debug( "{} -> Connecting server {}:{}", tcpClient.myId(), connectAddress, connectPort );
+                ChannelFuture f = bootstrap.connect( connectAddress, connectPort ).sync();
                 f.channel().closeFuture().sync();
 
             } catch (InterruptedException e) {
-                log.warn( "{} -> Connect server Interrupt error: {}", tcpClient.myId(), e.getMessage() );
-                tcpClient.onDisconnected( getHandler() );
+                log.debug( "{} -> Connect server {}:{} -> {}", tcpClient.myId(), connectAddress, connectPort, e.getMessage() );
+                tcpClient.serviceDisconnected( getHandler(), "Interupted" );
             } catch (Exception e) {
-                if (e.getCause() != null) {
-                    log.warn( "{} -> Connect server error: {}", tcpClient.myId(), e.getCause().getMessage() );
+                String message;
+                if (e.getCause() instanceof ConnectException) {
+                    log.debug( "{} -> Connect server {}:{} not avail -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
+                    tcpClient.serviceDisconnected( getHandler(), "Closed" );
                 } else {
-                    log.warn( "{} -> Connect server error: {}", tcpClient.myId(), e.getMessage() );
+                    log.debug( "{} -> Connect server {}:{} -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
+                    tcpClient.serviceDisconnected( getHandler(), "Exception" );
                 }
-                tcpClient.onDisconnected( getHandler() );
             } finally {
-                log.debug( "{} -> Server thread stopped", tcpClient.myId() );
                 running.set(false);
                 stopping.set(false);
             }
