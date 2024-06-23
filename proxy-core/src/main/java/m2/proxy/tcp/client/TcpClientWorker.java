@@ -25,7 +25,7 @@ public class TcpClientWorker extends ConnectionWorker {
     private final int connectPort;
     private final AtomicReference<ConnectionHandler> connectionHandler = new AtomicReference<>();
 
-    private EventLoopGroup bossGroup;
+    private final EventLoopGroup bossGroup;
 
     private final String workerId;
     public String getWorkerId() { return workerId; }
@@ -63,7 +63,7 @@ public class TcpClientWorker extends ConnectionWorker {
                     connectionHandler.get().disconnect();
                 }
             } else {
-                log.warn( "{} -> connections handler missing", tcpClient.myId(), notifyRemote );
+                log.warn( "{} -> connections handler missing, notify: {}", tcpClient.myId(), notifyRemote );
             }
             bossGroup.shutdownGracefully();
             // remove connection handler
@@ -71,7 +71,7 @@ public class TcpClientWorker extends ConnectionWorker {
             while(running.get()) {
                 try {
                     Thread.sleep( 10 );
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 }
             }
             log.info( "{} -> disconnected", tcpClient.myId() );
@@ -117,7 +117,6 @@ public class TcpClientWorker extends ConnectionWorker {
                 log.debug( "{} -> Connect server {}:{} -> {}", tcpClient.myId(), connectAddress, connectPort, e.getMessage() );
                 tcpClient.serviceDisconnected( getHandler(), "Interupted" );
             } catch (Exception e) {
-                String message;
                 if (e.getCause() instanceof ConnectException) {
                     log.debug( "{} -> Connect server {}:{} not avail -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
                     tcpClient.serviceDisconnected( getHandler(), "Closed" );

@@ -52,6 +52,7 @@ public class RunServicesTest {
         server.start();
         assertTrue( server.isRunning() );
         Optional<EagerHttpResponse<?>> resp = Factory.getRest( 9000, "/local/hello", "hello" );
+        assertTrue( resp.isPresent() );
         assertEquals( 200, resp.get().getStatusCode() );
 
         resp = Factory.getRest( 9000, "/localX/hello" );

@@ -230,37 +230,35 @@ public class RequestTest {
         Executor start_task = Executors.newFixedThreadPool( 5 );
         ThreadPoolExecutor execute_task = ( ThreadPoolExecutor ) Executors.newFixedThreadPool( 25 );
 
-        tcpClients.forEach( c -> {
-            start_task.execute( () -> {
+        tcpClients.forEach( c -> start_task.execute( () -> {
 
-                final BasicsTest.TcpClient client = c;
-                log.debug( "{} -> client prepared", client.myId() );
+            final BasicsTest.TcpClient client = c;
+            log.debug( "{} -> client prepared", client.myId() );
 
-                client.setReconnectTimeSeconds( 2 );
-                client.startWaitConnect( Duration.ofSeconds( 10 ) );
-                if (client.isReady()) {
-                    execute_task.execute( () -> {
-                        long start = System.currentTimeMillis();
-                        while (System.currentTimeMillis() - start < 30000) {
-                            try {
-                                ConnectionHandler handler = server.getActiveClients().get( client.myId() );
-                                SessionHandler session = handler.openSession( 20000 );
-                                //session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
-                                ByteString message = ByteString.copyFromUtf8( "hello sync asdasdasd asd asd asd asdasdasd  " +
-                                        "asd asd asd asd asd asd asd " + client.myId );
-                                ByteString reply = session.sendRequest( "", message, RequestType.PLAIN );
-                                assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
-                            } catch (TcpException | Exception e) {
-                                log.error( "Send fail: {}", e.getMessage() );
-                            }
+            client.setReconnectTimeSeconds( 2 );
+            client.startWaitConnect( Duration.ofSeconds( 10 ) );
+            if (client.isReady()) {
+                execute_task.execute( () -> {
+                    long start = System.currentTimeMillis();
+                    while (System.currentTimeMillis() - start < 30000) {
+                        try {
+                            ConnectionHandler handler = server.getActiveClients().get( client.myId() );
+                            SessionHandler session = handler.openSession( 20000 );
+                            //session.sendAsyncRequest( "", ByteString.copyFromUtf8( "hello" ), RequestType.PLAIN );
+                            ByteString message = ByteString.copyFromUtf8( "hello sync asdasdasd asd asd asd asdasdasd  " +
+                                    "asd asd asd asd asd asd asd " + client.myId );
+                            ByteString reply = session.sendRequest( "", message, RequestType.PLAIN );
+                            assertEquals( message.toStringUtf8(), reply.toStringUtf8() );
+                        } catch (TcpException | Exception e) {
+                            log.error( "Send fail: {}", e.getMessage() );
                         }
-                    } );
-                    log.debug( "{} -> client started", client.myId() );
-                } else {
-                    log.warn( "{} -> client NOT started", client.myId() );
-                }
-            } );
-        } );
+                    }
+                } );
+                log.debug( "{} -> client started", client.myId() );
+            } else {
+                log.warn( "{} -> client NOT started", client.myId() );
+            }
+        } ) );
         Thread.sleep( 1000 );
 
         log.info( "All started threads: {}", execute_task.getActiveCount() );

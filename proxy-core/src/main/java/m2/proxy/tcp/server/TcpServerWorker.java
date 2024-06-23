@@ -91,7 +91,7 @@ class TcpServerWorker extends ConnectionWorker {
                 f.channel().close();
 
             } catch (InterruptedException e) {
-                log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
+                log.info( "{} -> Stopp interupt: {}", tcpServer.myId(), e.getMessage() );
             } catch (Exception e) {
                 log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
             } finally {
@@ -104,7 +104,7 @@ class TcpServerWorker extends ConnectionWorker {
     @Override public void disconnect(boolean notifyRemote) {
         if (!stopping.getAndSet( true )) {
             new ArrayList<>( tcpServer.getClientHandles().values() )
-                    .forEach( handle -> tcpServer.disconnect( handle ) );
+                    .forEach( tcpServer::disconnect );
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

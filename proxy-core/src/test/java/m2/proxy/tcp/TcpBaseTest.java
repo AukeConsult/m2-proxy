@@ -19,7 +19,7 @@ public class TcpBaseTest {
             @Override public ConnectionHandler setConnectionHandler() { return null; }
             @Override public void connect(ConnectionHandler handler) { }
             @Override public void disconnect(ConnectionHandler handler) { }
-            @Override public void onDisconnected(ConnectionHandler handler) { }
+            @Override public void serviceDisconnected(ConnectionHandler handler, String cause) { }
             @Override public void onStart() { }
             @Override public void onStop() { }
             @Override protected void execute() { }
@@ -30,7 +30,8 @@ public class TcpBaseTest {
     void setAccessTest() {
         TcpBase t = getTcpBase();
         Optional<String> accessKey = t.setAccess( "","","","", "" );
+        assertTrue(accessKey.isPresent());
         assertEquals("12345",accessKey.get());
-        assertTrue(t.getAccessCacheList().size()>0);
+        assertTrue( !t.getAccessCacheList().isEmpty() );
     }
 }

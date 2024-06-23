@@ -454,17 +454,15 @@ public abstract class ConnectionHandler {
                                     h.getAgent()
                             )) {
 
-                                tcpService.getTaskPool().execute( () -> {
-
+                                tcpService.getTaskPool().execute( () ->
                                     notifyOnRequest(
                                             m.getRequest().getSessionId(),
                                             m.getRequest().getRequestId(),
                                             m.getRequest().getType(),
                                             m.getRequest().getDestination(),
                                             m.getRequest().getRequestMessage()
-                                    );
-
-                                } );
+                                    )
+                                 );
 
 
                             } else {
@@ -493,21 +491,15 @@ public abstract class ConnectionHandler {
                                         logon.getAgent()
                                 );
 
-
-                                if (accessPath.isPresent()) {
-                                    replyMessage = Logon.newBuilder()
-                                            .setAccessPath( accessPath.get() )
-                                            .setStatus( FunctionStatus.OK_LOGON )
-                                            .setMessage("successfully logged on")
-
-                                            .build();
-                                } else {
-                                    replyMessage = Logon.newBuilder()
-                                            .setAccessPath( accessPath.get() )
-                                            .setStatus( FunctionStatus.REJECTED_LOGON )
-                                            .setMessage("can not log on")
-                                            .build();
-                                }
+                                replyMessage = accessPath.map( s -> Logon.newBuilder()
+                                        .setAccessPath( s )
+                                        .setStatus( FunctionStatus.OK_LOGON )
+                                        .setMessage( "successfully logged on" )
+                                        .build() ).orElseGet( () -> Logon.newBuilder()
+                                        .setAccessPath( accessPath.get() )
+                                        .setStatus( FunctionStatus.REJECTED_LOGON )
+                                        .setMessage( "can not log on" )
+                                        .build() );
                                 reply(
                                         m.getRequest().getSessionId(),
                                         m.getRequest().getRequestId(),
@@ -611,8 +603,7 @@ public abstract class ConnectionHandler {
 
     public void startPing(int timePeriod) {
         if (isOpen() && bothConnected() && !doPing.getAndSet( true )) {
-            ctx.executor().scheduleAtFixedRate( () ->
-                            sendPing()
+            ctx.executor().scheduleAtFixedRate( this::sendPing
                     , 3, timePeriod, TimeUnit.SECONDS );
         }
     }

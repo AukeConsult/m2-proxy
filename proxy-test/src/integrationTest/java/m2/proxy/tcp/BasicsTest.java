@@ -521,13 +521,13 @@ public class BasicsTest {
             }
             try {
                 Thread.sleep( 1000 * 10 );
-            } catch (InterruptedException e) { }
+            } catch (InterruptedException ignored) { }
             this.stop();
         }
     }
 
     @Test
-    void random_many_clients() throws InterruptedException, NoSuchAlgorithmException {
+    void random_many_clients() throws InterruptedException {
 
         log.info( "random_clients" );
         List<RandomClient> tcpClients = new ArrayList<>();
@@ -541,24 +541,20 @@ public class BasicsTest {
         Executor start_task = Executors.newFixedThreadPool( 5 );
         ThreadPoolExecutor execute_task = ( ThreadPoolExecutor ) Executors.newFixedThreadPool( 110 );
 
-        tcpClients.forEach( c -> {
-            start_task.execute( () -> {
+        tcpClients.forEach( c -> start_task.execute( () -> {
 
-                final RandomClient client = c;
-                log.debug( "{} -> client prepared", client.myId() );
+            final RandomClient client = c;
+            log.debug( "{} -> client prepared", client.myId() );
 
-                client.setReconnectTimeSeconds( 2 );
-                client.startWaitConnect( Duration.ofSeconds( 10 ) );
-                if (client.isReady()) {
-                    execute_task.execute( () -> {
-                        client.runTest();
-                    } );
-                    log.debug( "{} -> client started", client.myId() );
-                } else {
-                    log.warn( "{} -> client NOT started", client.myId() );
-                }
-            } );
-        } );
+            client.setReconnectTimeSeconds( 2 );
+            client.startWaitConnect( Duration.ofSeconds( 10 ) );
+            if (client.isReady()) {
+                execute_task.execute( () -> client.runTest() );
+                log.debug( "{} -> client started", client.myId() );
+            } else {
+                log.warn( "{} -> client NOT started", client.myId() );
+            }
+        } ) );
         Thread.sleep( 1000 );
 
         log.info( "All started threads: {}", execute_task.getActiveCount() );

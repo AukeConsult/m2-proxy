@@ -90,7 +90,7 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public void setLocalPort(int localPort) { this.localPort = localPort; }
 
-    private Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
+    private final Map<String, ConnectionHandler> activeClients = new ConcurrentHashMap<>();
     public Map<String, ConnectionHandler> getActiveClients() { return activeClients; }
 
     protected ExecutorService taskPool;

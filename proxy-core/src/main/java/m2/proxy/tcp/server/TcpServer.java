@@ -89,7 +89,7 @@ public abstract class TcpServer extends TcpBase {
         while (tcpServerWorker.running.get() && tcpServerWorker.stopping.get()) {
             try {
                 Thread.sleep( 10 );
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
         }
     }
