@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.lang.Thread.sleep;
+
 public abstract class ConnectionHandler {
     private static final Logger log = LoggerFactory.getLogger( ConnectionHandler.class );
 
@@ -72,7 +74,9 @@ public abstract class ConnectionHandler {
     private ConnectionWorker connectionWorker;
     public ConnectionWorker getConnectionWorker() { return connectionWorker; }
 
+    public AtomicReference<PublicKey> getRemotePublicKey() { return remotePublicKey; }
     public ChannelHandlerContext getCtx() { return ctx; }
+
     public AtomicReference<String> getRemoteClientId() { return remoteClientId; }
     public String getChannelId() { return channelId.get(); }
     public String getRemotePublicAddress() { return remotePublicAddress.get(); }
@@ -89,11 +93,11 @@ public abstract class ConnectionHandler {
     private final AtomicBoolean doPing = new AtomicBoolean();
 
     // where is where session is created
-    public SessionHandler openSession(SessionHandler session, int sessionTimeOut) {
-        session.handler = this;
-        sessions.put( session.getSessionId(), session );
-        return session;
-    }
+//    public SessionHandler openSession(SessionHandler session, int sessionTimeOut) {
+//        session.handler = this;
+//        sessions.put( session.getSessionId(), session );
+//        return session;
+//    }
 
     public SessionHandler openSession(int timeOut) {
         return openSession(tcpService.myId(), timeOut);
@@ -175,7 +179,7 @@ public abstract class ConnectionHandler {
                 );
                 outWork.key.incrementAndGet();
                 try {
-                    Thread.sleep( 1000 );
+                    sleep( 1000 );
                 } catch (InterruptedException ignored) {
                 }
                 cnt++;
@@ -185,7 +189,7 @@ public abstract class ConnectionHandler {
             while (myStatus.get().getNumber() < PingStatus.CONNECTED.getNumber() && cnt < MAX_RETRY) {
                 sendPing();
                 try {
-                    Thread.sleep( 1000 );
+                    sleep( 1000 );
                 } catch (InterruptedException ignored) {
                 }
                 cnt++;
@@ -225,7 +229,7 @@ public abstract class ConnectionHandler {
             while (handler.remoteStatus.get().getNumber() < PingStatus.CONNECTED.getNumber() && cnt < MAX_RETRY) {
                 sendPing();
                 try {
-                    Thread.sleep( 1000 );
+                    sleep( 1000 );
                 } catch (InterruptedException ignored) {
                 }
                 cnt++;
@@ -592,14 +596,12 @@ public abstract class ConnectionHandler {
         if (!disconnected.getAndSet( true )) {
             Thread.yield();
             if (remoteClientId.get() != null) {
-                if (getTcpService().getActiveClients().containsKey( remoteClientId.get() )) {
-                    getTcpService().getActiveClients().remove( remoteClientId.get() );
-                }
+                getTcpService().getActiveClients().remove( remoteClientId.get() );
             }
             myStatus.set( PingStatus.DISCONNECTED );
             log.debug( "{} -> disconnect and close handler: {}, client: {}", getTcpService().myId(), getChannelId(), getRemoteClientId() );
             if (ctx != null) {
-                ctx.executor().shutdownNow();
+                ctx.executor().shutdown();
                 ctx.close();
                 Thread.yield();
             }

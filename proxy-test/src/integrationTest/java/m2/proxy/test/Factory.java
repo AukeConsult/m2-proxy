@@ -87,7 +87,7 @@ public class Factory {
             log.info("return: {}",rawResponse.getStartLine().getReason());
             return Optional.of(rawResponse);
         } catch (IOException e) {
-            log.error("Request: {}, IOException", path, e.getMessage());
+            log.error("Request: {}, IOException: {}", path, e.getMessage());
             return Optional.empty();
         }
     }
@@ -109,7 +109,7 @@ public class Factory {
             log.info("return: {}",rawResponse.getStartLine().getReason());
             return Optional.of(rawResponse);
         } catch (IOException e) {
-            log.error("Request: {}, IOException", path, e.getMessage());
+            log.error("Request: {}, IOException: {}", path, e.getMessage());
             return Optional.empty();
         }
 
@@ -130,7 +130,7 @@ public class Factory {
             EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
             return Optional.of(rawResponse);
         } catch (IOException e) {
-            log.error("Request: {}, IOException", path, e.getMessage());
+            log.error("Request: {}, IOException: {}", path, e.getMessage());
             return Optional.empty();
         }
     }
@@ -151,7 +151,7 @@ public class Factory {
             EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
             return Optional.of(rawResponse);
         } catch (IOException e) {
-            log.error("Request: {}, IOException", path, e.getMessage());
+            log.error("Request: {}, IOException: {}", path, e.getMessage());
             return Optional.empty();
         }
     }

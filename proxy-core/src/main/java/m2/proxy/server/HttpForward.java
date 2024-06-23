@@ -77,8 +77,10 @@ public class HttpForward extends TcpServer implements Service {
             } else {
                 log.warn( "Rejected client: {}", myId );
                 JsonObject jsonRet = new JsonObject();
-                jsonRet.addProperty( "status", logon.get().getStatus().toString());
-                jsonRet.addProperty( "message", logon.get().getMessage());
+                if(logon.isPresent()) {
+                    jsonRet.addProperty( "status", logon.get().getStatus().toString());
+                    jsonRet.addProperty( "message", logon.get().getMessage());
+                }
                 return Optional.of( http.parseResponse(
                         httpHelper.reply( 403, ProxyStatus.REJECTED )
                 ) );
