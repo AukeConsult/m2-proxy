@@ -52,7 +52,7 @@ public class HttpHelperTest {
     }
 
     @Test
-    void access_request_query () throws IOException {
+    void access_request_query ()  {
 
         RawHttpRequest request = rawHttp.parseRequest("GET localhost:8000/12345/hello?id=1 HTTP/1.1");
         assertTrue(httpHelper.getAccessPath( request ).isPresent());

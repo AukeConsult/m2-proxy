@@ -121,8 +121,7 @@ public class HttpForward extends TcpServer implements Service {
                             remoteAddress,
                             accessToken,
                             agent,
-                            requestOut.get().eagerly().toString(),
-                            timeOut
+                            requestOut.get().eagerly().toString()
                     );
 
                     if (ret.isPresent()) {

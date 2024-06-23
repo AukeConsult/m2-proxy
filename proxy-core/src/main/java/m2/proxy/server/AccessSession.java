@@ -74,8 +74,7 @@ public class AccessSession {
             String remoteAddress,
             String accessToken,
             String agent,
-            String request,
-            int timeOut
+            String request
     ) throws TcpException {
 
         Access access = accessPaths.getOrDefault( accessPath, null );

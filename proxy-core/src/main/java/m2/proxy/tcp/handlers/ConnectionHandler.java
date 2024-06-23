@@ -48,9 +48,7 @@ public abstract class ConnectionHandler {
     final Map<Long, WaitRequest> requestSessions = new ConcurrentHashMap<>();
 
     final Map<Long, SessionHandler> sessions = new ConcurrentHashMap<>();
-    public Map<Long, SessionHandler> getSessions() {
-        return sessions;
-    }
+    public Map<Long, SessionHandler> getSessions() { return sessions; }
 
     private ChannelHandlerContext ctx;
     private final AtomicReference<String> channelId = new AtomicReference<>();
@@ -122,12 +120,20 @@ public abstract class ConnectionHandler {
         Message m = Message.newBuilder()
                 .setType( MessageType.REPLY )
                 .setReply(
-                        Reply.newBuilder()
-                                .setSessionId( sessionId )
-                                .setRequestId( requestId )
-                                .setType( type )
-                                .setReplyMessage( reply )
-                                .build()
+                        reply!=null
+                                ?
+                                Reply.newBuilder()
+                                        .setSessionId( sessionId )
+                                        .setRequestId( requestId )
+                                        .setType( type )
+                                        .setReplyMessage( reply )
+                                        .build()
+                                :
+                                Reply.newBuilder()
+                                        .setSessionId( sessionId )
+                                        .setRequestId( requestId )
+                                        .setType( type )
+                                        .build()
                 )
                 .build();
         writeMessage( m );

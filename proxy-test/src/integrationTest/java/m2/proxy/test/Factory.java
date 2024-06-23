@@ -135,9 +135,9 @@ public class Factory {
         }
     }
 
-    static Optional<EagerHttpResponse<?>> putRest(int port, String path, String body) {
+    static Optional<EagerHttpResponse<?>> putRest(int port, String body) {
         try (TcpRawHttpClient client = new TcpRawHttpClient()) {
-            String req = String.format( "PUT localhost:%d%s HTTP/1.1\r\nUser-Agent: RawHTTP", port, path );
+            String req = String.format( "PUT localhost:%d%s HTTP/1.1\r\nUser-Agent: RawHTTP", port, "/spark/echo" );
             if (body != null) {
                 req = req + "\r\n"
                         + "Content-Length: " + body.length() + "\r\n"
@@ -147,11 +147,11 @@ public class Factory {
                         + body;
 
             }
-            log.info("put send: {}, body: {}",path,body);
+            log.info("put send: {}, body: {}", "/spark/echo",body);
             EagerHttpResponse<?> rawResponse = client.send( new RawHttp().parseRequest( req ) ).eagerly();
             return Optional.of(rawResponse);
         } catch (IOException e) {
-            log.error("Request: {}, IOException: {}", path, e.getMessage());
+            log.error("Request: {}, IOException: {}", "/spark/echo", e.getMessage());
             return Optional.empty();
         }
     }
