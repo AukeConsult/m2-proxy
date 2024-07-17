@@ -1,18 +1,18 @@
-package m2.proxy.server;
+package m2.proxy.server.tcp;
 
 import m2.proxy.tcp.handlers.SessionHandler;
 
-public class Access {
-    private final String accessPath;
+public class ClientSession {
+    private final String accessKey;
     private final String clientId;
     private final SessionHandler sessionHandler;
 
-    public String getAccessPath() { return accessPath; }
+    public String getAccessKey() { return accessKey; }
     public String getClientId() { return clientId; }
     public SessionHandler getSessionHandler() { return sessionHandler; }
 
-    public Access(String accessPath, String clientId, SessionHandler sessionHandler) {
-        this.accessPath = accessPath;
+    public ClientSession(String accessKey, String clientId, SessionHandler sessionHandler) {
+        this.accessKey = accessKey;
         this.clientId = clientId;
         this.sessionHandler = sessionHandler;
     }

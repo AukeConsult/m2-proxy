@@ -1,4 +1,4 @@
-package m2.proxy.server;
+package m2.proxy.server.tcp;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -15,18 +15,23 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AccessSession {
-    private static final Logger log = LoggerFactory.getLogger( AccessSession.class );
 
-    private final Map<String, Access> accessPaths = new ConcurrentHashMap<>();
-    public Map<String, Access> getAccessPaths() {
-        return accessPaths;
+// handle sessions access to remote
+// session start with a logon request that return a walid accesskey
+// accessKey is used in url for identify client to forward
+
+public class SessionsHandler {
+    private static final Logger log = LoggerFactory.getLogger( SessionsHandler.class );
+
+    private final Map<String, ClientSession> clientSessions = new ConcurrentHashMap<>();
+    public Map<String, ClientSession> getClientSessions() {
+        return clientSessions;
     }
 
     private final TcpServer tcpServer;
-    public AccessSession(TcpServer tcpServer) { this.tcpServer=tcpServer; }
+    public SessionsHandler(TcpServer tcpServer) { this.tcpServer=tcpServer; }
 
-    public Optional<MessageOuterClass.Logon> logon(
+    public Optional<MessageOuterClass.Logon> logon (
             String remoteClient,
             String remoteAddress,
             String userId,
@@ -41,6 +46,8 @@ public class AccessSession {
                     tcpServer.getActiveClients().get( remoteClient ).isOpen()) {
 
                 ConnectionHandler client = tcpServer.getActiveClients().get( remoteClient );
+
+                // open a tcp session to remote proxy and send logon request
                 SessionHandler session = client.openSession( remoteAddress, 10000);
                 Optional<MessageOuterClass.Logon> logon = session
                         .logon(
@@ -52,9 +59,9 @@ public class AccessSession {
                         );
 
                 if (logon.isPresent()) {
-                    log.info( "Got accessPath: {}, client: {}", logon.get().getAccessPath(), remoteClient );
-                    Access a = new Access( logon.get().getAccessPath(), tcpServer.myId(),session );
-                    accessPaths.put( a.getAccessPath(), a );
+                    log.info( "Got accessPath: {}, client: {}", logon.get().getAccessKey(), remoteClient );
+                    ClientSession a = new ClientSession( logon.get().getAccessKey(), tcpServer.myId(), session );
+                    clientSessions.put( a.getAccessKey(), a );
                     return logon;
                 } else {
                     log.warn( "Rejected client: {}", remoteClient );
@@ -68,8 +75,8 @@ public class AccessSession {
         }
     }
 
-    public Optional<ByteString> forwardHttp(
-            String accessPath,
+    public Optional<ByteString> forward(
+            String accessKey,
             String path,
             String remoteAddress,
             String accessToken,
@@ -77,13 +84,13 @@ public class AccessSession {
             String request
     ) throws TcpException {
 
-        Access access = accessPaths.getOrDefault( accessPath, null );
-        if (access!=null) {
+        ClientSession clientSession = clientSessions.getOrDefault( accessKey, null );
+        if (clientSession !=null) {
 
-            log.info( "client: {}, Remote Forward {}", access.getClientId(), path );
+            log.info( "client: {}, Remote Forward {}", clientSession.getClientId(), path );
 
             MessageOuterClass.Http m = MessageOuterClass.Http.newBuilder()
-                    .setAccessPath( accessPath )
+                    .setAccessPath( accessKey )
                     .setRemoteAddress( remoteAddress )
                     .setAccessToken( accessToken )
                     .setAgent( agent )
@@ -91,7 +98,7 @@ public class AccessSession {
                     .setRequest( ByteString.copyFromUtf8( request ) )
                     .build();
 
-            ByteString ret = access.getSessionHandler().sendRequest(
+            ByteString ret = clientSession.getSessionHandler().sendRequest(
                     "", m.toByteString(), MessageOuterClass.RequestType.HTTP
             );
 
@@ -99,10 +106,10 @@ public class AccessSession {
                 try {
                     MessageOuterClass.HttpReply reply = MessageOuterClass.HttpReply.parseFrom( ret );
                     if (reply.getOkLogon()) {
-                        log.warn( "GOT REPLY client: {}", access.getClientId() );
+                        log.warn( "GOT REPLY client: {}", clientSession.getClientId() );
                         return Optional.of( reply.getReply() );
                     } else {
-                        log.warn( "REJECTED REQUEST client: {}", access.getClientId() );
+                        log.warn( "REJECTED REQUEST client: {}", clientSession.getClientId() );
                         throw new TcpException( ProxyStatus.REJECTED, "rejected remote request" );
                     }
                 } catch (InvalidProtocolBufferException e) {
@@ -110,6 +117,6 @@ public class AccessSession {
                 }
             }
         }
-        throw new TcpException( ProxyStatus.REJECTED, "Cant find client for access Path: " + accessPath );
+        throw new TcpException( ProxyStatus.REJECTED, "Cant find client for access Path: " + accessKey );
     }
 }

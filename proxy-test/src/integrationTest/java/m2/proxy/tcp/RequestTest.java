@@ -87,15 +87,15 @@ public class RequestTest {
 
             return new ConnectionHandler() {
                 @Override protected void handlerOnMessageIn(Message m) {
-                    log.info( "{} -> in {}", getTcpService().myId(), m.getType() );
+                    log.info( "{} -> in {}", getTcpBase().myId(), m.getType() );
                     if (m.getType() == MessageType.REQUEST) {
-                        log.info( "{} -> request {}", getTcpService().myId(), m.getRequest().getType() );
+                        log.info( "{} -> request {}", getTcpBase().myId(), m.getRequest().getType() );
                         sessionId.set( m.getRequest().getSessionId() );
                         requestId.set( m.getRequest().getRequestId() );
                     }
                 }
                 @Override protected void handlerOnMessageOut(Message m) {
-                    log.info( "{} -> out {}", getTcpService().myId(), m.getType() );
+                    log.info( "{} -> out {}", getTcpBase().myId(), m.getType() );
                     if (m.getType() == MessageType.REPLY) {
                         assertEquals( sessionId.get(), m.getReply().getSessionId() );
                         assertEquals( requestId.get(), m.getReply().getRequestId() );
@@ -284,7 +284,7 @@ public class RequestTest {
                     SessionHandler session = s.openSession(10000 );
                     Optional<MessageOuterClass.Logon> access = session.logon( "leif","","","","" );
                     assertTrue( access.isPresent() );
-                    assertFalse(access.get().getAccessPath().isEmpty());
+                    assertFalse(access.get().getAccessKey().isEmpty());
                 } catch (Exception e) {
                     fail( "Send fail: " + e.getMessage() );
                 }

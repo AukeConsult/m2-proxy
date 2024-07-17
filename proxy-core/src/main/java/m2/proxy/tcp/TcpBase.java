@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,6 +103,8 @@ public abstract class TcpBase extends ServiceBaseExecutor {
         return taskPool;
     }
 
+
+
     public TcpBase() {
         this.myId = "";
         this.connectAddress = "";
@@ -131,20 +134,29 @@ public abstract class TcpBase extends ServiceBaseExecutor {
 
     public abstract ConnectionHandler setConnectionHandler();
     public abstract void connect(ConnectionHandler handler);
-    public abstract void disconnect(ConnectionHandler handler);
-    public abstract void serviceDisconnected(ConnectionHandler handler, String cause);
-    public abstract void onStart();
-    public abstract void onStop();
+    public abstract void disconnectRemote(ConnectionHandler handler);
+    public abstract void gotClientDisconnect(ConnectionHandler handler, String cause);
+    protected abstract void onStart();
+    protected abstract void onStop();
+
+    protected AtomicBoolean serviceRunning = new AtomicBoolean(false);
+    public boolean isServiceRunning() { return serviceRunning.get(); }
 
     @Override final protected boolean open() {
         return true;
     }
 
-    @Override protected void startServices() { onStart(); }
+    @Override protected void startServices() {
+        if(!serviceRunning.getAndSet( true )) {
+            onStart();
+        }
+    }
     @Override final protected void close() {
-        onStop();
-        taskPool.shutdownNow();
-        taskPool = null;
+        if(serviceRunning.getAndSet( false )) {
+            onStop();
+            taskPool.shutdownNow();
+            taskPool = null;
+        }
     }
     @Override final protected void forceClose() { }
 }

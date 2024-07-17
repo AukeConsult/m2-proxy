@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicReference;
 
+// handling connections to server
 @SuppressWarnings( { "UnusedReturnValue", "NullableProblems" } )
 public class TcpClientWorker extends ConnectionWorker {
     private static final Logger log = LoggerFactory.getLogger( TcpClientWorker.class );
@@ -33,7 +34,7 @@ public class TcpClientWorker extends ConnectionWorker {
     public ConnectionHandler getHandler() {
         if (connectionHandler.get() == null) {
             connectionHandler.set( tcpClient.setConnectionHandler() );
-            connectionHandler.get().setTcpService( tcpClient );
+            connectionHandler.get().setTcpBase( tcpClient );
             connectionHandler.get().setConnectionWorker( this );
         }
         return connectionHandler.get();
@@ -52,12 +53,13 @@ public class TcpClientWorker extends ConnectionWorker {
     }
 
     @Override
-    public void disconnect(boolean notifyRemote) {
+    public void disconnectRemote(boolean notifyRemote) {
 
         log.trace( "{} -> disconnect, notify: {}", tcpClient.myId(), notifyRemote );
         if (!stopping.getAndSet( true )) {
             if (connectionHandler.get() != null) {
                 if (notifyRemote) {
+                    log.info( "{} -> disconnected server", tcpClient.myId() );
                     connectionHandler.get().disconnectRemote();
                 } else {
                     connectionHandler.get().disconnect();
@@ -74,7 +76,7 @@ public class TcpClientWorker extends ConnectionWorker {
                 } catch (InterruptedException ignored) {
                 }
             }
-            log.info( "{} -> disconnected", tcpClient.myId() );
+
         }
     }
 
@@ -114,15 +116,15 @@ public class TcpClientWorker extends ConnectionWorker {
                 f.channel().closeFuture().sync();
 
             } catch (InterruptedException e) {
-                log.debug( "{} -> Connect server {}:{} -> {}", tcpClient.myId(), connectAddress, connectPort, e.getMessage() );
-                tcpClient.serviceDisconnected( getHandler(), "Interupted" );
+                log.info( "{} -> Connect server {}:{} Interrupt -> {}", tcpClient.myId(), connectAddress, connectPort, e.getMessage() );
+                tcpClient.gotClientDisconnect( getHandler(), "Interupted" );
             } catch (Exception e) {
                 if (e.getCause() instanceof ConnectException) {
-                    log.debug( "{} -> Connect server {}:{} not avail -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
-                    tcpClient.serviceDisconnected( getHandler(), "Closed" );
+                    log.info( "{} -> Connect server {}:{} closed -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
+                    tcpClient.gotClientDisconnect( getHandler(), "Closed" );
                 } else {
-                    log.debug( "{} -> Connect server {}:{} -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
-                    tcpClient.serviceDisconnected( getHandler(), "Exception" );
+                    log.info( "{} -> Connect server {}:{} Exception -> {}", tcpClient.myId(), connectAddress, connectPort , e.getMessage() );
+                    tcpClient.gotClientDisconnect( getHandler(), "Exception" );
                 }
             } finally {
                 running.set(false);

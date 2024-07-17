@@ -1,4 +1,4 @@
-package m2.proxy.server;
+package m2.proxy.server.tcp;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -20,19 +20,21 @@ import rawhttp.core.RawHttpResponse;
 import java.io.IOException;
 import java.util.Optional;
 
-public class HttpForward extends TcpServer implements Service {
-    private static final Logger log = LoggerFactory.getLogger( HttpForward.class );
+// send request TCP client
+public class TcpForward extends TcpServer implements Service {
+    private static final Logger log = LoggerFactory.getLogger( TcpForward.class );
 
     private final RawHttp http = new RawHttp();
     private final HttpHelper httpHelper = new HttpHelper();
 
     private final int timeOut;
 
-    public HttpForward(int tcpPort, int timeOut) {
+    public TcpForward(int tcpPort, int timeOut) {
         super( tcpPort, Network.localAddress(), null );
         this.timeOut = timeOut;
     }
 
+    // send a logon request
     private Optional<RawHttpResponse<?>> logonRequest(RawHttpRequest request) {
 
         try {
@@ -60,10 +62,11 @@ public class HttpForward extends TcpServer implements Service {
                     accessToken,
                     agent
             );
+
             if(logon.isPresent() && logon.get().getStatus().equals( FunctionStatus.OK_LOGON )) {
 
                 JsonObject jsonRet = new JsonObject();
-                jsonRet.addProperty( "accessPath", logon.get().getAccessPath() );
+                jsonRet.addProperty( "accessKey", logon.get().getAccessKey() );
                 jsonRet.addProperty( "userId", logon.get().getUserId() );
                 jsonRet.addProperty( "passWord", logon.get().getPassWord() );
                 jsonRet.addProperty( "accessToken", logon.get().getAccessToken() );
@@ -100,8 +103,8 @@ public class HttpForward extends TcpServer implements Service {
 
         Optional<String> accessPath = httpHelper.getAccessPath( request );
         if (accessPath.isPresent()) {
-            Optional<RawHttpRequest> requestOut = httpHelper.forward( accessPath.get(), request );
-            if (requestOut.isPresent() && getAccessSession().getAccessPaths().containsKey( accessPath.get() )) {
+            Optional<RawHttpRequest> requestOut = httpHelper.pathAccessKey( accessPath.get(), request );
+            if (requestOut.isPresent() && getAccessSession().getClientSessions().containsKey( accessPath.get() )) {
 
                 try {
 
@@ -115,7 +118,7 @@ public class HttpForward extends TcpServer implements Service {
                     String agent = request.getHeaders().get( "Agent" ).toString();
                     String path = requestOut.get().getStartLine().getUri().getPath();
 
-                    Optional<ByteString> ret = getAccessSession().forwardHttp(
+                    Optional<ByteString> ret = getAccessSession().forward(
                             accessPath.get(),
                             path,
                             remoteAddress,
@@ -169,9 +172,10 @@ public class HttpForward extends TcpServer implements Service {
         return Optional.empty();
     }
 
-    // handle requests
+    // forward request using TCP
     public Optional<RawHttpResponse<?>> handleHttp(RawHttpRequest request) throws TcpException {
         if (request.getMethod().equals( "PUT" ) && request.getUri().getPath().startsWith( "/logon" )) {
+            // send logon to a proxy
             return logonRequest( request );
         } else {
             return forward( request );

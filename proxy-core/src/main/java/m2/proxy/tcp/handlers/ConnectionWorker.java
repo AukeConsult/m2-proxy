@@ -15,6 +15,6 @@ public abstract class ConnectionWorker implements Runnable {
     }
 
     public boolean isReady() { return running.get() && connected.get() && !stopping.get(); }
-    public abstract void disconnect(boolean notifyRemote);
+    public abstract void disconnectRemote(boolean notifyRemote);
 
 }

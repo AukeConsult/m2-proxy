@@ -7,6 +7,7 @@ import m2.proxy.proto.MessageOuterClass.HttpReply;
 import m2.proxy.proto.MessageOuterClass.Http;
 import m2.proxy.proto.MessageOuterClass.Message;
 import m2.proxy.proto.MessageOuterClass.RequestType;
+import m2.proxy.server.remote.RemoteForward;
 import m2.proxy.tcp.client.TcpClient;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
@@ -20,8 +21,7 @@ public class ProxyClient extends TcpClient implements Service {
 
     private static final Logger log = LoggerFactory.getLogger( ProxyClient.class );
 
-    private final DirectForward directForward;
-    private final LocalForward localForward;
+    private final RemoteForward remoteForward;
     private final ClientSite clientSite;
     private final AccessControl accessControl;
 
@@ -31,17 +31,14 @@ public class ProxyClient extends TcpClient implements Service {
             int tcpPort,
             int sitePort,
             AccessControl accessControl,
-            DirectForward directForward,
-            LocalForward localForward
+            RemoteForward remoteForward
     ) {
         super( clientId, serverAddr, tcpPort, Network.localAddress() );
         this.accessControl = accessControl;
-        this.directForward = directForward;
-        this.localForward = localForward;
+        this.remoteForward = remoteForward;
         this.accessControl.setService( this );
-        this.directForward.setService( this );
-        this.localForward.setService( this );
-        this.clientSite = new ClientSite( this, sitePort, directForward, localForward );
+        this.remoteForward.setService( this );
+        this.clientSite = new ClientSite( this, sitePort, remoteForward );
         this.clientSite.getMetrics().setId( clientId );
     }
 
@@ -64,7 +61,7 @@ public class ProxyClient extends TcpClient implements Service {
             @Override protected void handlerOnDisonnect(String ClientId, String remoteAddress) {}
             @Override
             protected void notifyOnRequest(long sessionId, long requestId, RequestType requestType, String address, ByteString requestBytes) {
-                getTcpService().getTaskPool().execute( () -> {
+                getTcpBase().getTaskPool().execute( () -> {
 
                     try {
 
@@ -73,10 +70,10 @@ public class ProxyClient extends TcpClient implements Service {
                             Http m = Http.parseFrom( requestBytes );
 
                             RawHttpRequest request = httpHelper.parseRequest( m.getRequest().toStringUtf8() );
-                            Optional<RawHttpResponse<?>> ret = directForward.handleHttp( request );
-                            if (ret.isEmpty()) {
-                                ret = localForward.handleHttp( request );
-                            }
+                            Optional<RawHttpResponse<?>> ret = remoteForward.handleHttp( request );
+//                            if (ret.isEmpty()) {
+//                                ret = localSite.handleHttp( request );
+//                            }
 
                             if (ret.isPresent()) {
 
@@ -123,7 +120,7 @@ public class ProxyClient extends TcpClient implements Service {
     }
 
     @Override
-    public void onStart() {
+    public final void onStart() {
         super.onStart();
         log.info( "Proxy clientId {}, start on site port: {}, proxy port: {}:{}",
                 myId(),
@@ -132,7 +129,7 @@ public class ProxyClient extends TcpClient implements Service {
     }
 
     @Override
-    public void onStop() {
+    public final void onStop() {
         super.onStop();
         log.info( "Proxy clientId {}, stopped", myId() );
         clientSite.stop();
@@ -148,8 +145,6 @@ public class ProxyClient extends TcpClient implements Service {
     }
 
     private Service service;
-    @Override
-    public Service getService() { return service; }
-    @Override
-    public void setService(Service service) { this.service = service; }
+    @Override public Service getService() { return service; }
+    @Override public void setService(Service service) { this.service = service; }
 }

@@ -2,13 +2,13 @@ package m2.proxy.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import m2.proxy.common.DirectForward;
-import m2.proxy.common.DirectSite;
-import m2.proxy.common.LocalForward;
+import m2.proxy.common.HttpException;
+import m2.proxy.server.remote.RemoteForward;
+import m2.proxy.server.remote.RemoteSite;
 import m2.proxy.common.ContentResult;
-import m2.proxy.server.HttpForward;
+import m2.proxy.server.tcp.ClientSession;
+import m2.proxy.server.tcp.TcpForward;
 import m2.proxy.server.ProxyServer;
-import m2.proxy.server.Access;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.EagerHttpResponse;
@@ -25,25 +25,23 @@ public class Factory {
     private static final Logger log = LoggerFactory.getLogger( Factory.class );
 
     public static ProxyServer createServer(int serverPort, int tcpPort) {
-        DirectForward directForward = new DirectForward();
+        RemoteForward remoteForward = new RemoteForward();
 
-        HttpForward httpForward = new HttpForward( tcpPort, 10000 );
-        httpForward.getAccessSession().getAccessPaths().put( "test1", new Access( "test1", "client1" ,null) );
-        httpForward.getAccessSession().getAccessPaths().put( "test2", new Access( "test2", "client2" ,null) );
+        TcpForward tcpForward = new TcpForward( tcpPort, 10000 );
+        tcpForward.getAccessSession().getClientSessions().put( "test1", new ClientSession( "test1", "client1" ,null) );
+        tcpForward.getAccessSession().getClientSessions().put( "test2", new ClientSession( "test2", "client2" ,null) );
 
-        DirectSite spark = new DirectSite( "/spark", "localhost:9999" );
-        directForward.sites.put( spark.getPath(), spark );
+        RemoteSite spark = new RemoteSite( "/spark", "localhost:9999" );
+        remoteForward.sites.put( spark.getPath(), spark );
 
-        LocalForward localForward = new LocalForward() {
+        return new ProxyServer(
+                serverPort,
+                remoteForward,
+                tcpForward
+        ) {
+            @Override protected Optional<ContentResult> onHandlePath(String verb, String path, Map<String, String> headers, String contentType, String body)
+                    throws HttpException {
 
-            @Override
-            protected Optional<ContentResult> onHandlePath(
-                    String verb,
-                    String path,
-                    Map<String, String> headers,
-                    String contentType,
-                    String body
-            ) {
                 if (verb.equals( "GET" )) {
                     switch (path) {
                         case "/local/hello" -> {
@@ -71,13 +69,6 @@ public class Factory {
                 return Optional.empty();
             }
         };
-
-        return new ProxyServer(
-                serverPort,
-                directForward,
-                httpForward,
-                localForward
-        );
     }
 
     static Optional<EagerHttpResponse<?>> getRest(int port, String path) {

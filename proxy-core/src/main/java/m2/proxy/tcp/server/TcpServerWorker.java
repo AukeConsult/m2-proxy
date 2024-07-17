@@ -38,7 +38,7 @@ class TcpServerWorker extends ConnectionWorker {
     public void run() {
 
         if (!running.getAndSet( true )) {
-            log.info( "{} -> Start received connects", tcpServer.myId() );
+            log.info( "{} -> Started Connect worker", tcpServer.myId() );
             try {
 
                 ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -77,7 +77,7 @@ class TcpServerWorker extends ConnectionWorker {
                                                     channelId, ctx.channel().remoteAddress().toString() );
                                         } else {
                                             final ConnectionHandler handler = tcpServer.setConnectionHandler();
-                                            handler.setTcpService( tcpServer );
+                                            handler.setTcpBase( tcpServer );
                                             handler.initServer( channelId, ctx );
                                             tcpServer.getClientHandles().put( handler.getChannelId(), handler );
                                         }
@@ -95,16 +95,16 @@ class TcpServerWorker extends ConnectionWorker {
             } catch (Exception e) {
                 log.info( "{} -> Stopp error: {}", tcpServer.myId(), e.getMessage() );
             } finally {
-                log.info( "{} -> Stopped received connects", tcpServer.myId() );
+                log.info( "{} -> Stopped Connect worker", tcpServer.myId() );
                 running.set( false );
                 stopping.set( false );
             }
         }
     }
-    @Override public void disconnect(boolean notifyRemote) {
-        if (!stopping.getAndSet( true )) {
+    @Override public void disconnectRemote(boolean notifyRemote) {
+        if (running.get() && !stopping.getAndSet( true )) {
             new ArrayList<>( tcpServer.getClientHandles().values() )
-                    .forEach( tcpServer::disconnect );
+                    .forEach( tcpServer::disconnectRemote );
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

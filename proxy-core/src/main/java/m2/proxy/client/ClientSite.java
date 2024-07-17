@@ -2,6 +2,7 @@ package m2.proxy.client;
 
 import m2.proxy.common.*;
 import m2.proxy.executors.ServiceBase;
+import m2.proxy.server.remote.RemoteForward;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rawhttp.core.RawHttp;
@@ -23,8 +24,7 @@ public class ClientSite extends ServiceBase {
     public ProxyMetrics getMetrics() { return proxyMetrics; }
 
     private final int sitePort;
-    private final DirectForward directForward;
-    private final LocalForward localForward;
+    private final RemoteForward remoteForward;
     private final TcpRawHttpServer tcpRawHttpServer;
     private final ProxyClient server;
 
@@ -33,12 +33,10 @@ public class ClientSite extends ServiceBase {
     public ClientSite(
             ProxyClient server,
             int sitePort,
-            DirectForward directForward,
-            LocalForward localForward
+            RemoteForward remoteForward
     ) {
         this.server=server;
-        this.directForward = directForward;
-        this.localForward = localForward;
+        this.remoteForward = remoteForward;
         this.sitePort=sitePort;
         tcpRawHttpServer = new TcpRawHttpServer( sitePort );
     }
@@ -103,7 +101,7 @@ public class ClientSite extends ServiceBase {
                 // check access keys forward with tcp
                 proxyMetrics.transIn.incrementAndGet();
                 try {
-                    Optional<RawHttpResponse<?>> direct = directForward.handleHttp( request );
+                    Optional<RawHttpResponse<?>> direct = remoteForward.handleHttp( request );
                     if (direct.isPresent()) {
                         proxyMetrics.transDirectOut.incrementAndGet();
                         return direct;
@@ -115,12 +113,12 @@ public class ClientSite extends ServiceBase {
                         proxyMetrics.transServerOut.incrementAndGet();
                         return server;
                     }
-                    // execute local replies
-                    Optional<RawHttpResponse<?>> local = localForward.handleHttp( requestOut );
-                    if (local.isPresent()) {
-                        proxyMetrics.transLocalOut.incrementAndGet();
-                        return local;
-                    }
+//                    // execute local replies
+//                    Optional<RawHttpResponse<?>> local = localSite.handleHttp( requestOut );
+//                    if (local.isPresent()) {
+//                        proxyMetrics.transLocalOut.incrementAndGet();
+//                        return local;
+//                    }
                     proxyMetrics.transError.incrementAndGet();
                     throw new HttpException( ProxyStatus.NOTFOUND, requestOut.getUri().getPath() );
                 } catch (HttpException e) {

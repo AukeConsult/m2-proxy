@@ -1,6 +1,7 @@
 package m2.proxy.common;
 
 import com.google.gson.JsonObject;
+import m2.proxy.server.remote.RemoteSite;
 import rawhttp.core.*;
 import rawhttp.core.body.BodyReader;
 
@@ -36,16 +37,15 @@ public class HttpHelper {
         return Optional.of( response );
     }
 
-
-
     public Optional<RawHttpResponse<?>> errResponse(ProxyStatus status, String message) {
         return Optional.of(rawHttp.parseResponse( reply(404, status, message)));
     }
 
-    public RawHttpRequest updateRequest(String removePath, String destination, String hostAddress, RawHttpRequest request) {
+    // update request url path, remove beginning of pathe containing location (site or accesspath)
+    public RawHttpRequest updateRquest(String removeLocation, String destination, String hostAddress, RawHttpRequest request) {
 
         RequestLine startLine = request.getStartLine();
-        String path = ("##" + startLine.getUri().getPath()).replaceFirst( "##" + removePath, "" )
+        String path = ("##" + startLine.getUri().getPath()).replaceFirst( "##" + removeLocation, "" )
                 +
                 (
                         startLine.getUri().getRawQuery() != null ? "?" + startLine.getUri().getRawQuery() : ""
@@ -62,18 +62,20 @@ public class HttpHelper {
 
     }
 
-    public Optional<RawHttpRequest> forward(DirectSite site, RawHttpRequest request)  {
+    // forward to a site using the url path
+    // see setting of direct sites
+    public Optional<RawHttpRequest> pathDirectSite(RemoteSite site, RawHttpRequest request)  {
 
         if(request.getStartLine().getUri().getPath().startsWith( site.getPath() )) {
-            return Optional.of(updateRequest( site.getPath(),site.getDestination(), getHostAddress(request), request));
+            return Optional.of( updateRquest( site.getPath(),site.getDestination(), getHostAddress(request), request));
         } else {
             return Optional.empty();
         }
     }
-
-    public Optional<RawHttpRequest> forward(String accessKey, RawHttpRequest request)  {
+    // forward to a site using an access key
+    public Optional<RawHttpRequest> pathAccessKey(String accessKey, RawHttpRequest request)  {
         if(request.getStartLine().getUri().getPath().startsWith( "/" + accessKey )) {
-            return Optional.of(updateRequest( "/" + accessKey,request.getStartLine().getUri().getHost(), getHostAddress(request), request));
+            return Optional.of( updateRquest( "/" + accessKey,request.getStartLine().getUri().getHost(), getHostAddress(request), request));
         } else {
             return Optional.empty();
         }

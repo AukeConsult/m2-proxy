@@ -67,7 +67,7 @@ message HttpReply {
 
 message Logon {
   string remoteAddress = 1;
-  string accessPath = 2;
+  string accessKey = 2;
   string clientId = 3;
   string userId = 4;
   string passWord = 5;

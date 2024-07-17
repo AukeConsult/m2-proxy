@@ -7,8 +7,6 @@ import m2.proxy.proto.MessageOuterClass.MessageType;
 import m2.proxy.proto.MessageOuterClass.RequestType;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import m2.proxy.tcp.server.TcpServer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +27,11 @@ import static org.junit.jupiter.api.Assertions.*;
 public class BasicsTest {
     private static final Logger log = LoggerFactory.getLogger( BasicsTest.class );
 
-    final TcpServer tcpServer;
+    TcpServer tcpServer;
     public AtomicLong outBytes = new AtomicLong();
     public AtomicLong inBytes = new AtomicLong();
     public AtomicInteger outMessages = new AtomicInteger();
     public AtomicInteger inMessages = new AtomicInteger();
-
     final Random rnd = new Random();
 
     static KeyPair rsaKeyClient;
@@ -49,6 +46,20 @@ public class BasicsTest {
         }
         return rsaKeyClient;
     }
+
+    static KeyPair rsaKeyServer;
+    static KeyPair getServerRsaKey()  {
+        try {
+            if(rsaKeyServer==null) {
+                KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
+                generator.initialize( 2048 );
+                rsaKeyServer = generator.generateKeyPair();
+            }
+        } catch (NoSuchAlgorithmException ignore) {
+        }
+        return rsaKeyServer;
+    }
+
 
     public static class TcpClient extends m2.proxy.tcp.client.TcpClient {
         private static final Logger log = LoggerFactory.getLogger( TcpClient.class );
@@ -115,11 +126,11 @@ public class BasicsTest {
         }
     }
 
-    public BasicsTest() throws NoSuchAlgorithmException {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance( "RSA" );
-        generator.initialize( 2048 );
-        KeyPair rsaKey = generator.generateKeyPair();
-        tcpServer = new TcpServer( 4000, "", rsaKey ) {
+    public void startServer() throws NoSuchAlgorithmException, InterruptedException {
+
+        stopServer();
+
+        tcpServer = new TcpServer( 4000, "", getServerRsaKey() ) {
             @Override
             public ConnectionHandler setConnectionHandler() {
                 return new ConnectionHandler() {
@@ -151,30 +162,40 @@ public class BasicsTest {
                 };
             }
         };
-    }
-
-    @BeforeEach
-    void init()  {
+        assertFalse( tcpServer.isRunning() );
+        log.info("server init");
 
         outBytes.set( 0 );
         inBytes.set( 0 );
         outMessages.set( 0 );
         inMessages.set( 0 );
 
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
+
         tcpServer.start();
         assertTrue( tcpServer.isRunning() );
         assertEquals( 0, tcpServer.getClientHandles().size() , 0);
 
+        log.info("server started");
+
     }
 
-    @AfterEach
-    void end() {
-        tcpServer.stop();
-        assertEquals( 0, tcpServer.getClientHandles().size() , 0);
+    void stopServer() throws InterruptedException {
+
+        if(tcpServer!=null && tcpServer.isServiceRunning()) {
+            tcpServer.stop();
+            assertEquals( 0, tcpServer.getClientHandles().size() , 0);
+            assertEquals( 0, tcpServer.getActiveClients().size() );
+            log.info("server stopped");
+        }
+
     }
 
     @Test
-    void server_start_stop() throws InterruptedException {
+    void server_start_stop() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         Thread.sleep( 1000 * 5 );
         assertTrue( tcpServer.isRunning() );
@@ -185,14 +206,18 @@ public class BasicsTest {
         tcpServer.start();
         assertTrue( tcpServer.isRunning() );
         Thread.sleep( 1000 * 10 );
+
+        stopServer();
     }
 
     @Test
-    void client_disconnect() throws InterruptedException {
+    void client_disconnect() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         TcpClient client1 = new TcpClient( "leif", 4000, "" );
         client1.setReconnectTimeSeconds( 5 );
-        client1.startWaitConnect( Duration.ofSeconds( 2 ) );
+        client1.startWaitConnect( Duration.ofSeconds( 5 ) );
         assertTrue( client1.isConnected() );
         Thread.sleep( 2000 );
 
@@ -222,12 +247,22 @@ public class BasicsTest {
 
         tcpServer.stop();
 
-        Thread.sleep( 10000 );
+        Thread.sleep( 5000 );
+
+        assertEquals( 0, tcpServer.getClientHandles().size() );
+        assertEquals( 0, tcpServer.getActiveClients().size() );
+        assertEquals( 0, client1.getActiveClients().size() );
+        assertEquals( 1, client1.getTcpRemoteServers().size() );
+
+        stopServer();
+
 
     }
 
     @Test
-    void server_disconnect() throws InterruptedException {
+    void server_disconnect() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         TcpClient client1 = new TcpClient( "leif", 4000, "" );
         client1.setReconnectTimeSeconds( 5 );
@@ -266,10 +301,15 @@ public class BasicsTest {
         assertEquals( 1, tcpServer.getClientHandles().size() );
         assertEquals( 1, tcpServer.getActiveClients().size() );
 
+        stopServer();
+
+
     }
 
     @Test
-    void server_stopped_client_try_reconnect() throws InterruptedException {
+    void server_stopped_client_try_reconnect() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         tcpServer.stop();
         Thread.sleep( 2 * 1000 );
@@ -338,12 +378,19 @@ public class BasicsTest {
             assertFalse( client.isConnected() );
         } );
 
+        clients.forEach( ServiceBaseExecutor::stop );
+
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
+
+        stopServer();
+
     }
 
     @Test
-    void client_stop_client_try_reconnect() throws InterruptedException {
+    void client_stop_client_try_reconnect() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         TcpClient client1 = new TcpClient( "leif", 4000, "" );
         client1.setReconnectTimeSeconds( 10 );
@@ -385,10 +432,15 @@ public class BasicsTest {
         assertEquals( 0, tcpServer.getClientHandles().size() );
         assertEquals( 0, tcpServer.getActiveClients().size() );
 
+        stopServer();
+
+
     }
 
     @Test
-    void one_client_big_raws_messages() throws InterruptedException {
+    void one_client_big_raws_messages() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         log.info( "one_client_big_messages" );
 
@@ -416,10 +468,16 @@ public class BasicsTest {
 
         assertTrue( client1.inBytes.get() > 0 && client1.outBytes.get() > 0 );
         assertEquals( client1.outBytes.get(), client1.inBytes.get() );
+
+        client1.stop();
+        stopServer();
+
     }
 
     @Test
-    void one_client_big_messages() throws InterruptedException {
+    void one_client_big_messages() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         log.info( "one_client_big_messages" );
 
@@ -447,10 +505,15 @@ public class BasicsTest {
 
         assertTrue( client1.inBytes.get() > 0 && client1.outBytes.get() > 0 );
         assertEquals( client1.outBytes.get(), client1.inBytes.get() );
+
+        stopServer();
+
     }
 
     @Test
-    void many_clients_send_messages() throws InterruptedException {
+    void many_clients_send_messages() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         log.info( "many_clients" );
 
@@ -492,6 +555,9 @@ public class BasicsTest {
             assertTrue( client.inBytes.get() > 0 && client.outBytes.get() > 0 );
             assertEquals( client.inBytes.get(), client.outBytes.get() );
         } );
+
+        stopServer();
+
     }
 
     public static class RandomClient extends TcpClient {
@@ -519,14 +585,18 @@ public class BasicsTest {
                 } );
             }
             try {
-                Thread.sleep( 1000 * 10 );
+                Thread.sleep( 1000 );
             } catch (InterruptedException ignored) { }
+            log.info( "stop client: {}", myId());
             this.stop();
+
         }
     }
 
     @Test
-    void random_many_clients() throws InterruptedException {
+    void random_many_clients() throws InterruptedException, NoSuchAlgorithmException {
+
+        startServer();
 
         log.info( "random_clients" );
         List<RandomClient> tcpClients = new ArrayList<>();
@@ -535,16 +605,12 @@ public class BasicsTest {
             tcpClients.add( c );
             log.info( "initiate client: {}, {}", c.myId(), i );
         }
-        log.info( "Start clients: {}", tcpClients.size() );
 
         Executor start_task = Executors.newFixedThreadPool( 5 );
         ThreadPoolExecutor execute_task = ( ThreadPoolExecutor ) Executors.newFixedThreadPool( 110 );
 
         tcpClients.forEach( c -> start_task.execute( () -> {
-
             final RandomClient client = c;
-            log.debug( "{} -> client prepared", client.myId() );
-
             client.setReconnectTimeSeconds( 2 );
             client.startWaitConnect( Duration.ofSeconds( 10 ) );
             if (client.isReady()) {
@@ -554,21 +620,26 @@ public class BasicsTest {
                 log.warn( "{} -> client NOT started", client.myId() );
             }
         } ) );
-        Thread.sleep( 1000 );
 
-        log.info( "All started threads: {}", execute_task.getActiveCount() );
-
+        while (execute_task.getActiveCount() == 0) {
+            log.info( "Treads not running: {}", execute_task.getActiveCount() );
+            Thread.sleep( 1000 * 5 );
+        }
+        log.info( "Started threads: {}", execute_task.getActiveCount() );
         while (execute_task.getActiveCount() > 0) {
-            log.info( "Treads still running: {}", execute_task.getActiveCount() );
+            log.info( "Treads running: {}", execute_task.getActiveCount() );
             Thread.sleep( 1000 * 5 );
         }
 
         Thread.sleep( 1000 * 10 );
-        tcpClients.forEach( c -> log.info( "{} -> out: {}, in: {}, diff: {}",
-                c.myId,
-                c.outBytes.get(),
-                c.inBytes.get(),
-                c.outBytes.get() - c.inBytes.get() )
+        tcpClients.forEach( c -> {
+            if(c.outBytes.get() - c.inBytes.get()!=0)
+                log.info( "{} -> out: {}, in: {}, diff: {}",
+                            c.myId,
+                            c.outBytes.get(),
+                            c.inBytes.get(),
+                            c.outBytes.get() - c.inBytes.get() );
+            }
         );
 
         Thread.sleep( 15000 );
@@ -577,6 +648,7 @@ public class BasicsTest {
         assertEquals( 0, tcpServer.getClientHandles().size() );
 
         tcpClients.forEach( c -> assertEquals( c.outBytes.get(), c.inBytes.get() ) );
-        tcpClients.forEach( ServiceBaseExecutor::stop );
+        stopServer();
+
     }
 }

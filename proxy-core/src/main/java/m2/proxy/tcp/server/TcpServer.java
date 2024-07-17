@@ -1,6 +1,6 @@
 package m2.proxy.tcp.server;
 
-import m2.proxy.server.AccessSession;
+import m2.proxy.server.tcp.SessionsHandler;
 import m2.proxy.tcp.TcpBase;
 import m2.proxy.tcp.handlers.ConnectionHandler;
 import org.slf4j.Logger;
@@ -17,8 +17,8 @@ public abstract class TcpServer extends TcpBase {
     private final Map<String, ConnectionHandler> clientHandles = new ConcurrentHashMap<>();
     public Map<String, ConnectionHandler> getClientHandles() { return clientHandles; }
 
-    private final AccessSession accessSession = new AccessSession( this );
-    public AccessSession getAccessSession() { return accessSession; }
+    private final SessionsHandler sessionsHandler = new SessionsHandler( this );
+    public SessionsHandler getAccessSession() { return sessionsHandler; }
 
     private TcpServerWorker tcpServerWorker;
 
@@ -31,40 +31,39 @@ public abstract class TcpServer extends TcpBase {
         keepAliveTime = 15;
     }
 
-    @Override public final void disconnect(ConnectionHandler handler) {
+    @Override public final void disconnectRemote(ConnectionHandler handler) {
 
+        log.debug( "{} -> do disconnect client: {}",myId,handler.getRemoteClientId());
         if(clientHandles.containsKey( handler.getChannelId() )) {
-
             // remove from active list
-            clientHandles.remove( handler.getChannelId() );
             Thread.yield();
             handler.disconnectRemote();
-            log.info( "{} -> disconnect client: {}, addr: {}, handlers: {}",
+            log.info( "{} -> disconnect client: {}, addr: {}, active handlers: {}",
                     myId(),
                     handler.getRemoteClientId(),
                     handler.getRemotePublicAddress(),
                     clientHandles.size()
             );
-        }
+            clientHandles.remove( handler.getChannelId() );
 
+        }
     }
 
-    @Override public final void serviceDisconnected(ConnectionHandler handler, String cause) {
+    // got a disconnect from client side
+    @Override public final void gotClientDisconnect(ConnectionHandler handler, String cause) {
 
         if(!clientHandles.containsKey( handler.getChannelId() )) {
-            log.error("{} -> serviceDisconnected, handle dont exits {}",myId(), handler.getChannelId());
+            log.error("{} -> serviceDisconnected, client handle dont exits {}",myId(), handler.getChannelId());
         }
-
-        log.info( "{} -> got disconnect from client: {}, addr: {}, cause: {}, open clients: {}",
+        clientHandles.remove( handler.getChannelId() );
+        log.info( "{} -> got disconnect from client: {}, addr: {}, cause: {}, active handles left: {}",
                 myId(),
                 handler.getRemoteClientId(),
                 handler.getRemotePublicAddress(),
                 cause,
                 clientHandles.size()
         );
-
         handler.removeActiveHandler();
-        clientHandles.remove( handler.getChannelId() );
         Thread.yield();
 
     }
@@ -78,14 +77,15 @@ public abstract class TcpServer extends TcpBase {
         return Optional.empty();
     }
 
-    @Override public final void onStart() {
-        log.info( "{} -> Starting netty server on -> {}:{} ", myId(), localAddress(), localPort() );
+    @Override protected final void onStart() {
+        log.info( "{} -> Starting server on -> {}:{} ", myId(), localAddress(), localPort() );
         tcpServerWorker = new TcpServerWorker( this );
         getTaskPool().execute( tcpServerWorker );
     }
 
-    @Override public final void onStop() {
-        tcpServerWorker.disconnect( true );
+    @Override protected final void onStop() {
+        log.info( "{} -> Stopping server on -> {}:{} ", myId(), localAddress(), localPort() );
+        tcpServerWorker.disconnectRemote( true );
         while (tcpServerWorker.running.get() && tcpServerWorker.stopping.get()) {
             try {
                 Thread.sleep( 10 );
